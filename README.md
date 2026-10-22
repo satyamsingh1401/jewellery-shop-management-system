@@ -57,7 +57,7 @@ jewellery-shop-management/
 ├── pom.xml
 ├── src/
 │   ├── main/
-│   │   ├── java/com/company/jewellery/
+│   │   ├── java/com/myhourly/jewellery/
 │   │   │   ├── JewelleryShopApplication.java
 │   │   │   ├── common/
 │   │   │   │   ├── exception/
