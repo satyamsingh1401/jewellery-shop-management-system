@@ -41,4 +41,17 @@ class BillingCalculatorServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.calculate(request));
     }
+        @Test
+    void matchesDocumentExampleSubtotal50000WithThreePercentTax() {
+        BillItemRequest item = new BillItemRequest(1L, new BigDecimal("10.000"),
+                new BigDecimal("5000.00"), MakingChargeType.FIXED, BigDecimal.ZERO);
+        BillCalculationRequest request = new BillCalculationRequest(
+                List.of(item), DiscountType.NONE, null);
+
+        BillCalculationResponse response = service.calculate(request);
+
+        assertEquals(new BigDecimal("50000.00"), response.subtotal());
+        assertEquals(new BigDecimal("1500.00"), response.tax());
+        assertEquals(new BigDecimal("51500.00"), response.grandTotal());
+    }
 }
