@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.myhourly.jewellery.billing.dto.InvoiceStatusUpdateRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 @RestController
 @RequestMapping("/api/billing/invoices")
@@ -23,6 +25,12 @@ public class InvoiceController {
 
     public InvoiceController(InvoiceService invoiceService) {
         this.invoiceService = invoiceService;
+    }
+
+        @PatchMapping("/{id}/status")
+    public InvoiceResponse updateStatus(@PathVariable Long id,
+                                        @Valid @RequestBody InvoiceStatusUpdateRequest request) {
+        return invoiceService.updateStatus(id, request.status());
     }
 
     @PostMapping

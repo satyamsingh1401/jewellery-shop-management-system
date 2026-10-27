@@ -96,4 +96,15 @@ public class Invoice {
     public InvoiceStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public List<InvoiceItem> getItems() { return items; }
+
+        public void changeStatus(InvoiceStatus newStatus) {
+        if (this.status != InvoiceStatus.GENERATED) {
+            throw new IllegalArgumentException(
+                    "Invoice is already " + this.status + " and cannot be changed");
+        }
+        if (newStatus == InvoiceStatus.GENERATED) {
+            throw new IllegalArgumentException("Invoice is already GENERATED");
+        }
+        this.status = newStatus;
+    }
 }

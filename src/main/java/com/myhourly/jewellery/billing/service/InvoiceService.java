@@ -1,5 +1,6 @@
 package com.myhourly.jewellery.billing.service;
 
+
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
 import com.myhourly.jewellery.billing.dto.BillItemRequest;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
 
 @Service
 public class InvoiceService {
@@ -44,11 +46,20 @@ public class InvoiceService {
                     line.metalValue(), line.makingCharge(), line.lineTotal()));
         }
 
+        
         Invoice saved = repository.saveAndFlush(invoice);
         saved.assignInvoiceNumber(String.format("INV-%06d", saved.getId()));
         return toResponse(saved);
     }
 
+        @Transactional
+    public InvoiceResponse updateStatus(Long id, InvoiceStatus newStatus) {
+        Invoice invoice = repository.findById(id)
+                .orElseThrow(() -> new InvoiceNotFoundException("Invoice not found with id " + id));
+        invoice.changeStatus(newStatus);
+        return toResponse(invoice);
+    }
+    
     @Transactional(readOnly = true)
     public InvoiceResponse getById(Long id) {
         return toResponse(repository.findById(id)
