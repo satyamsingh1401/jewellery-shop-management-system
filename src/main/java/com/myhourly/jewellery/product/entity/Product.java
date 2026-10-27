@@ -11,8 +11,8 @@ import java.time.Instant;
 
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name="products",uniqueConstraints = {
         @UniqueConstraint(name = "unique_products_sku",columnNames ="sku")
