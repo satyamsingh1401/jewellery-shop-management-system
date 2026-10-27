@@ -99,4 +99,8 @@ public void changeStatus(boolean active){
         this.active=active;
 }
 
+    public static Product create() {
+        return new Product();
+    }
+
 }
