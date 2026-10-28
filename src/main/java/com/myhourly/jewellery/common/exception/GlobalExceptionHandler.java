@@ -25,7 +25,15 @@ public class GlobalExceptionHandler {
         );
     }
 
-
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiError> handleDuplicate(DuplicateResourceException ex, WebRequest request){
+        return build(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                request,
+                Map.of()
+        );
+    }
 
     private ResponseEntity<ApiError> build(
             HttpStatus status, String message, WebRequest request,
