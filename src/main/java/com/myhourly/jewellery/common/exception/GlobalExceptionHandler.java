@@ -35,6 +35,17 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(BusinessValidationException.class)
+    public ResponseEntity<ApiError> handleBusinessValidation(BusinessValidationException ex, WebRequest request){
+        return build(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request,
+                Map.of()
+        );
+    }
+
+
     private ResponseEntity<ApiError> build(
             HttpStatus status, String message, WebRequest request,
             Map<String,String> fieldErrors){
