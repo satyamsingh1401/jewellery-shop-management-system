@@ -3,6 +3,7 @@ package com.myhourly.jewellery.common.exception;
 import com.myhourly.jewellery.common.response.ApiError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -11,6 +12,7 @@ import org.springframework.web.context.request.WebRequest;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -84,6 +86,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
 
     }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadableRequest(
+            HttpMessageNotReadableException ex,
+            WebRequest request) {
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request body contains invalid JSON or enum values",
+                request,
+                Map.of()
+        );
+    }
+
 
 
 }
