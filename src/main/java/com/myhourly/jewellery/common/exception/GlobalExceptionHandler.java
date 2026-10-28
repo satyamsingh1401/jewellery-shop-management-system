@@ -1,6 +1,7 @@
 package com.myhourly.jewellery.common.exception;
 
 import com.myhourly.jewellery.common.response.ApiError;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -68,6 +69,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(
+            DataIntegrityViolationException ex,
+            WebRequest request) {
+
+        return build(
+                HttpStatus.CONFLICT,
+                "The operation conflicts with existing data",
+                request,
+                Map.of()
+        );
+    }
 
     private ResponseEntity<ApiError> build(
             HttpStatus status, String message, WebRequest request,
