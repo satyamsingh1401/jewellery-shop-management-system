@@ -27,7 +27,23 @@ public class GlobalExceptionHandler {
 
 
 
+    private ResponseEntity<ApiError> build(
+            HttpStatus status, String message, WebRequest request,
+            Map<String,String> fieldErrors){
+        String path = ((ServletWebRequest) request)
+                .getRequest().getRequestURI();
 
+        ApiError body = new ApiError(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                path,
+                fieldErrors
+        );
+        return ResponseEntity.status(status).body(body);
+
+    }
 
 
 }
