@@ -82,6 +82,20 @@ public class GlobalExceptionHandler {
         );
     }
 
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadableRequest(
+            HttpMessageNotReadableException ex,
+            WebRequest request) {
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request body contains invalid JSON or enum values",
+                request,
+                Map.of()
+        );
+    }
+
     private ResponseEntity<ApiError> build(
             HttpStatus status, String message, WebRequest request,
             Map<String,String> fieldErrors){
@@ -100,18 +114,6 @@ public class GlobalExceptionHandler {
 
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiError> handleUnreadableRequest(
-            HttpMessageNotReadableException ex,
-            WebRequest request) {
-
-        return build(
-                HttpStatus.BAD_REQUEST,
-                "Request body contains invalid JSON or enum values",
-                request,
-                Map.of()
-        );
-    }
 
 
 
