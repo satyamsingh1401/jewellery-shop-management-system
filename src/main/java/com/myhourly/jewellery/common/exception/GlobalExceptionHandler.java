@@ -3,12 +3,14 @@ package com.myhourly.jewellery.common.exception;
 import com.myhourly.jewellery.common.response.ApiError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -42,6 +44,25 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request,
                 Map.of()
+        );
+    }
+
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex , WebRequest request ){
+
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.putIfAbsent(
+                        error.getField(),
+                        error.getDefaultMessage()
+                )
+        );
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed",
+                request,
+                errors
         );
     }
 
