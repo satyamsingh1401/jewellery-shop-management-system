@@ -1,6 +1,5 @@
 package com.myhourly.jewellery.billing.service;
 
-
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
 import com.myhourly.jewellery.billing.dto.BillItemRequest;
@@ -10,16 +9,17 @@ import com.myhourly.jewellery.billing.dto.InvoiceItemResponse;
 import com.myhourly.jewellery.billing.dto.InvoiceResponse;
 import com.myhourly.jewellery.billing.entity.Invoice;
 import com.myhourly.jewellery.billing.entity.InvoiceItem;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
 import com.myhourly.jewellery.billing.exception.InvoiceNotFoundException;
 import com.myhourly.jewellery.billing.repository.InvoiceRepository;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.myhourly.jewellery.billing.enums.InvoiceStatus;
 
 @Service
 public class InvoiceService {
+
+    private static final String INVOICE_NUMBER_FORMAT = "INV-%06d";
 
     private final BillingCalculatorService calculator;
     private final InvoiceRepository repository;
@@ -34,8 +34,9 @@ public class InvoiceService {
         BillCalculationResponse calc = calculator.calculate(new BillCalculationRequest(
                 request.items(), request.discountType(), request.discountValue()));
 
-        // Temporary unique number, replaced below once the database id is known.
-        Invoice invoice = new Invoice(UUID.randomUUID().toString(), request.customerId(),
+        // The invoice number is derived from the database-generated id, so it is left
+        // null here and assigned below, inside the same transaction.
+        Invoice invoice = new Invoice(null, request.customerId(),
                 request.orderId(), calc.subtotal(), calc.discount(), calc.taxableAmount(),
                 calc.tax(), calc.grandTotal());
 
@@ -46,20 +47,14 @@ public class InvoiceService {
                     line.metalValue(), line.makingCharge(), line.lineTotal()));
         }
 
-        
+        // The INSERT runs now, so the database assigns the id.
         Invoice saved = repository.saveAndFlush(invoice);
-        saved.assignInvoiceNumber(String.format("INV-%06d", saved.getId()));
+        saved.assignInvoiceNumber(formatInvoiceNumber(saved.getId()));
+        // The entity is managed, so Hibernate writes the number with an UPDATE when the
+        // transaction commits. If anything fails, the whole invoice is rolled back.
         return toResponse(saved);
     }
 
-        @Transactional
-    public InvoiceResponse updateStatus(Long id, InvoiceStatus newStatus) {
-        Invoice invoice = repository.findById(id)
-                .orElseThrow(() -> new InvoiceNotFoundException("Invoice not found with id " + id));
-        invoice.changeStatus(newStatus);
-        return toResponse(invoice);
-    }
-    
     @Transactional(readOnly = true)
     public InvoiceResponse getById(Long id) {
         return toResponse(repository.findById(id)
@@ -76,6 +71,18 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public List<InvoiceResponse> getByOrderId(Long orderId) {
         return repository.findByOrderId(orderId).stream().map(this::toResponse).toList();
+    }
+
+    @Transactional
+    public InvoiceResponse updateStatus(Long id, InvoiceStatus newStatus) {
+        Invoice invoice = repository.findById(id)
+                .orElseThrow(() -> new InvoiceNotFoundException("Invoice not found with id " + id));
+        invoice.changeStatus(newStatus);
+        return toResponse(invoice);
+    }
+
+    private String formatInvoiceNumber(Long id) {
+        return String.format(INVOICE_NUMBER_FORMAT, id);
     }
 
     private InvoiceResponse toResponse(Invoice invoice) {

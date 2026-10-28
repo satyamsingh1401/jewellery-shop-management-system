@@ -19,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import java.util.concurrent.atomic.AtomicReference;
 
 @ExtendWith(MockitoExtension.class)
 class InvoiceServiceTest {
@@ -51,5 +53,40 @@ class InvoiceServiceTest {
         assertEquals("INV-000007", response.invoiceNumber());
         assertEquals(new BigDecimal("60255.00"), response.grandTotal());
         assertEquals(1, response.items().size());
+    }
+        @Test
+    void createsInvoiceNumberFromDatabaseGeneratedId() {
+        AtomicReference<String> numberAtInsert = new AtomicReference<>("not-captured");
+        when(repository.saveAndFlush(any(Invoice.class))).thenAnswer(call -> {
+            Invoice invoice = call.getArgument(0);
+            numberAtInsert.set(invoice.getInvoiceNumber());
+            ReflectionTestUtils.setField(invoice, "id", 7L);
+            return invoice;
+        });
+
+        InvoiceResponse response = service.createInvoice(sampleRequest());
+
+        assertNull(numberAtInsert.get());
+        assertEquals("INV-000007", response.invoiceNumber());
+        assertEquals(new BigDecimal("60255.00"), response.grandTotal());
+        assertEquals(1, response.items().size());
+    }
+
+    @Test
+    void invoiceNumberGrowsPastSixDigitsWithoutBreakingUniqueness() {
+        when(repository.saveAndFlush(any(Invoice.class))).thenAnswer(call -> {
+            Invoice invoice = call.getArgument(0);
+            ReflectionTestUtils.setField(invoice, "id", 1234567L);
+            return invoice;
+        });
+
+        assertEquals("INV-1234567", service.createInvoice(sampleRequest()).invoiceNumber());
+    }
+
+    private InvoiceCreateRequest sampleRequest() {
+        BillItemRequest item = new BillItemRequest(1L, new BigDecimal("10.000"),
+                new BigDecimal("6000.00"), MakingChargeType.PER_GRAM, new BigDecimal("500.00"));
+        return new InvoiceCreateRequest(
+                1L, 100L, List.of(item), DiscountType.PERCENTAGE, new BigDecimal("10"));
     }
 }

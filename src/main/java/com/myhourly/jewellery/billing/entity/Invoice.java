@@ -24,7 +24,7 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 40)
+    @Column(unique = true, length = 40)
     private String invoiceNumber;
 
     @Column(nullable = false)
