@@ -1,3 +1,4 @@
+
 package com.myhourly.jewellery.payment.controller;
 
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
@@ -158,5 +159,70 @@ class PaymentControllerTest {
         mockMvc.perform(get("/api/payments/999")
                 .with(httpBasic("user", "PaymentTest@123")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createPaymentWithMalformedJsonShouldReturnStandardError()
+            throws Exception {
+
+        String requestJson = """
+                {
+                    "amount": 500,
+                    "paymentMethod":
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments")
+                .with(httpBasic("user", "PaymentTest@123"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message")
+                        .value("Invalid or malformed request body"))
+                .andExpect(jsonPath("$.path").value("/api/payments"));
+    }
+
+    @Test
+    void createPaymentWithMissingPaymentMethodShouldReturnValidationError()
+            throws Exception {
+
+        String requestJson = """
+                {
+                    "amount": 500
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments")
+                .with(httpBasic("user", "PaymentTest@123"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message")
+                        .value("paymentMethod: Payment method is required"))
+                .andExpect(jsonPath("$.path").value("/api/payments"));
+    }
+
+    @Test
+    void getMissingPaymentShouldReturnStandardErrorResponse()
+            throws Exception {
+
+        when(paymentService.getPaymentById(999L))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Payment not found: 999"));
+
+        mockMvc.perform(get("/api/payments/999")
+                .with(httpBasic("user", "PaymentTest@123")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message")
+                        .value("Payment not found: 999"))
+                .andExpect(jsonPath("$.path").value("/api/payments/999"));
     }
 }
