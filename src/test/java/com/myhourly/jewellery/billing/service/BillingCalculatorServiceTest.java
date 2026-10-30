@@ -1,8 +1,8 @@
 package com.myhourly.jewellery.billing.service;
 
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
 import com.myhourly.jewellery.billing.dto.BillItemRequest;
@@ -39,7 +39,7 @@ class BillingCalculatorServiceTest {
         BillCalculationRequest request = new BillCalculationRequest(
                 List.of(item), DiscountType.FLAT, new BigDecimal("5000"));
 
-        assertThrows(IllegalArgumentException.class, () -> service.calculate(request));
+        assertThrows(BusinessValidationException.class, () -> service.calculate(request));
     }
         @Test
     void matchesDocumentExampleSubtotal50000WithThreePercentTax() {
@@ -109,7 +109,7 @@ class BillingCalculatorServiceTest {
         BillCalculationRequest request = new BillCalculationRequest(
                 List.of(item), DiscountType.PERCENTAGE, new BigDecimal("150"));
 
-        assertThrows(IllegalArgumentException.class, () -> service.calculate(request));
+        assertThrows(BusinessValidationException.class, () -> service.calculate(request));
     }
 
     @Test

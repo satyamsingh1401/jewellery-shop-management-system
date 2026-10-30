@@ -2,7 +2,7 @@ package com.myhourly.jewellery.billing.entity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.billing.enums.InvoiceStatus;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class InvoiceStatusTest {
     void paidInvoiceCannotBeCancelled() {
         Invoice invoice = newInvoice();
         invoice.changeStatus(InvoiceStatus.PAID);
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> invoice.changeStatus(InvoiceStatus.CANCELLED));
     }
 }

@@ -1,5 +1,6 @@
 package com.myhourly.jewellery.billing.service;
 
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
 import com.myhourly.jewellery.billing.dto.BillItemRequest;
@@ -10,7 +11,6 @@ import com.myhourly.jewellery.billing.dto.InvoiceResponse;
 import com.myhourly.jewellery.billing.entity.Invoice;
 import com.myhourly.jewellery.billing.entity.InvoiceItem;
 import com.myhourly.jewellery.billing.enums.InvoiceStatus;
-import com.myhourly.jewellery.billing.exception.InvoiceNotFoundException;
 import com.myhourly.jewellery.billing.repository.InvoiceRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -58,13 +58,13 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public InvoiceResponse getById(Long id) {
         return toResponse(repository.findById(id)
-                .orElseThrow(() -> new InvoiceNotFoundException("Invoice not found with id " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id " + id)));
     }
 
     @Transactional(readOnly = true)
     public InvoiceResponse getByInvoiceNumber(String invoiceNumber) {
         return toResponse(repository.findByInvoiceNumber(invoiceNumber)
-                .orElseThrow(() -> new InvoiceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Invoice not found with number " + invoiceNumber)));
     }
 
@@ -76,7 +76,7 @@ public class InvoiceService {
     @Transactional
     public InvoiceResponse updateStatus(Long id, InvoiceStatus newStatus) {
         Invoice invoice = repository.findById(id)
-                .orElseThrow(() -> new InvoiceNotFoundException("Invoice not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id " + id));
         invoice.changeStatus(newStatus);
         return toResponse(invoice);
     }

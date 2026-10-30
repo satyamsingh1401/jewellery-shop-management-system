@@ -1,5 +1,8 @@
 package com.myhourly.jewellery.billing.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
+import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -88,5 +91,11 @@ class InvoiceServiceTest {
                 new BigDecimal("6000.00"), MakingChargeType.PER_GRAM, new BigDecimal("500.00"));
         return new InvoiceCreateRequest(
                 1L, 100L, List.of(item), DiscountType.PERCENTAGE, new BigDecimal("10"));
+    }
+        @Test
+    void throwsSharedNotFoundExceptionForUnknownInvoice() {
+        when(repository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getById(999L));
     }
 }
