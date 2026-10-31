@@ -47,6 +47,12 @@ class BillingCalculatorValidationTest {
     }
 
     @Test
+    void rejectsZeroRatePerGram() {
+        assertRejected(request(item("10", "0", MakingChargeType.PER_GRAM, "500.00"),
+                DiscountType.NONE, null), "ratePerGram");
+    }
+
+    @Test
     void rejectsNegativeNetWeight() {
         assertRejected(request(item("-5", "6000.00", MakingChargeType.PER_GRAM, "500.00"),
                 DiscountType.NONE, null), "netWeight");

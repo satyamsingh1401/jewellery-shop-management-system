@@ -35,6 +35,11 @@ class BillingRequestValidationTest {
     }
 
     @Test
+    void zeroRatePerGramIsRejected() {
+        assertTrue(invalidFields(item("10", "0", "500.00")).contains("ratePerGram"));
+    }
+
+    @Test
     void zeroAndNegativeNetWeightAreRejected() {
         assertTrue(invalidFields(item("0", "6000.00", "500.00")).contains("netWeight"));
         assertTrue(invalidFields(item("-5", "6000.00", "500.00")).contains("netWeight"));

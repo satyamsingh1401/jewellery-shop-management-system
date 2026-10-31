@@ -1,5 +1,6 @@
 package com.myhourly.jewellery.billing.service;
 
+import com.myhourly.jewellery.common.exception.DuplicateResourceException;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
@@ -31,6 +32,12 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponse createInvoice(InvoiceCreateRequest request) {
+                // Order and customer verification will be added here once those modules are available.
+        if (request.orderId() != null
+                && repository.existsByOrderIdAndStatusNot(request.orderId(), InvoiceStatus.CANCELLED)) {
+            throw new DuplicateResourceException(
+                    "An active invoice already exists for order " + request.orderId());
+        }
         BillCalculationResponse calc = calculator.calculate(new BillCalculationRequest(
                 request.items(), request.discountType(), request.discountValue()));
 

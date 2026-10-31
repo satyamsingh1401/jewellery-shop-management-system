@@ -1,6 +1,11 @@
 package com.myhourly.jewellery.billing.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
+import com.myhourly.jewellery.common.exception.DuplicateResourceException;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,6 +41,46 @@ class InvoiceServiceTest {
     @BeforeEach
     void setUp() {
         service = new InvoiceService(new BillingCalculatorService(new BigDecimal("3")), repository);
+    }
+        @Test
+    void rejectsSecondActiveInvoiceForTheSameOrder() {
+        when(repository.existsByOrderIdAndStatusNot(100L, InvoiceStatus.CANCELLED)).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class, () -> service.createInvoice(sampleRequest()));
+
+        verify(repository, never()).saveAndFlush(any(Invoice.class));
+    }
+
+    @Test
+    void cancelledInvoicesDoNotBlockANewInvoiceAndNumbersAreNotReused() {
+        when(repository.existsByOrderIdAndStatusNot(100L, InvoiceStatus.CANCELLED)).thenReturn(false);
+        when(repository.saveAndFlush(any(Invoice.class))).thenAnswer(call -> {
+            Invoice invoice = call.getArgument(0);
+            ReflectionTestUtils.setField(invoice, "id", 8L);
+            return invoice;
+        });
+
+        InvoiceResponse response = service.createInvoice(sampleRequest());
+
+        assertEquals("INV-000008", response.invoiceNumber());
+        verify(repository).existsByOrderIdAndStatusNot(100L, InvoiceStatus.CANCELLED);
+    }
+
+    @Test
+    void skipsTheDuplicateCheckWhenTheInvoiceHasNoOrder() {
+        when(repository.saveAndFlush(any(Invoice.class))).thenAnswer(call -> {
+            Invoice invoice = call.getArgument(0);
+            ReflectionTestUtils.setField(invoice, "id", 9L);
+            return invoice;
+        });
+        BillItemRequest item = new BillItemRequest(1L, new BigDecimal("10.000"),
+                new BigDecimal("6000.00"), MakingChargeType.PER_GRAM, new BigDecimal("500.00"));
+        InvoiceCreateRequest noOrder = new InvoiceCreateRequest(
+                1L, null, List.of(item), DiscountType.NONE, null);
+
+        service.createInvoice(noOrder);
+
+        verify(repository, never()).existsByOrderIdAndStatusNot(any(), any());
     }
 
     @Test

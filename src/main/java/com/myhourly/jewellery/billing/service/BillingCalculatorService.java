@@ -108,9 +108,9 @@ public class BillingCalculatorService {
         }
 
         if (item.ratePerGram() == null
-                || item.ratePerGram().compareTo(BigDecimal.ZERO) < 0) {
+                || item.ratePerGram().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessValidationException(
-                    "Rate per gram cannot be negative or null");
+                    "Rate per gram must be greater than zero");
         }
 
         if (item.makingChargeValue() == null
