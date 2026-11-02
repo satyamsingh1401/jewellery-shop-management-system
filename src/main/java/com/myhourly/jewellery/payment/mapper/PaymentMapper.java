@@ -1,10 +1,9 @@
-
 package com.myhourly.jewellery.payment.mapper;
 
-import com.myhourly.jewellery.payment.Payment;
 import com.myhourly.jewellery.payment.dto.PaymentResponseDto;
+import com.myhourly.jewellery.payment.entity.Payment;
 
-public class PaymentMapper {
+public final class PaymentMapper {
 
     private PaymentMapper() {
     }
@@ -17,6 +16,7 @@ public class PaymentMapper {
         PaymentResponseDto dto = new PaymentResponseDto();
 
         dto.setId(payment.getId());
+        dto.setBillId(payment.getBillId());
         dto.setAmount(payment.getAmount());
         dto.setPaymentMethod(payment.getPaymentMethod());
         dto.setStatus(payment.getStatus());

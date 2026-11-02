@@ -1,7 +1,7 @@
 
 package com.myhourly.jewellery;
 
-import com.myhourly.jewellery.payment.Payment;
+import com.myhourly.jewellery.payment.entity.Payment;
 import com.myhourly.jewellery.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

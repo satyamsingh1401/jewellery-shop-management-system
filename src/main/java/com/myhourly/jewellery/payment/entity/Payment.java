@@ -1,10 +1,14 @@
-
-package com.myhourly.jewellery.payment;
+package com.myhourly.jewellery.payment.entity;
 
 import com.myhourly.jewellery.payment.enums.PaymentMethod;
 import com.myhourly.jewellery.payment.enums.PaymentStatus;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -16,31 +20,53 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Placeholder until the Billing module is integrated (Phase 7),
+    // when this becomes a relationship to the actual Bill entity.
+    @Column(name = "bill_id")
+    private Long billId;
+
+    @NotNull(message = "Payment amount is required")
+    @DecimalMin(value = "0.01",
+            message = "Payment amount must be at least 0.01")
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @NotNull(message = "Payment method is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMethod paymentMethod;
 
+    @NotNull(message = "Payment status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentStatus status = PaymentStatus.PENDING;
 
+    @NotNull(message = "Refunded amount is required")
+    @DecimalMin(value = "0.00",
+            message = "Refunded amount cannot be negative")
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal refundedAmount = BigDecimal.ZERO;
 
+    @NotBlank(message = "Currency is required")
+    @Size(min = 3, max = 3,
+            message = "Currency must contain 3 characters")
+    @Column(nullable = false, length = 3)
     private String currency = "INR";
 
+    @Column(length = 100)
     private String createdBy;
 
+    @Column(length = 500)
     private String refundReason;
 
     private LocalDateTime paymentDate;
 
+    @NotNull
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @NotNull
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @Version
@@ -52,6 +78,7 @@ public class Payment {
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
+
         createdAt = now;
         updatedAt = now;
 
@@ -73,12 +100,61 @@ public class Payment {
         updatedAt = LocalDateTime.now();
     }
 
+    @PreRemove
+    protected void preventDeletion() {
+        throw new IllegalStateException(
+                "Payment records cannot be deleted");
+    }
+
+    public void transitionTo(PaymentStatus newStatus) {
+        if (newStatus == null) {
+            throw new IllegalArgumentException(
+                    "Payment status is required");
+        }
+
+        if (status == newStatus) {
+            return;
+        }
+
+        boolean allowed = switch (status) {
+            case PENDING ->
+                    newStatus == PaymentStatus.COMPLETED
+                    || newStatus == PaymentStatus.FAILED
+                    || newStatus == PaymentStatus.CANCELLED;
+
+            case COMPLETED ->
+                    newStatus == PaymentStatus.PARTIALLY_REFUNDED
+                    || newStatus == PaymentStatus.REFUNDED;
+
+            case PARTIALLY_REFUNDED ->
+                    newStatus == PaymentStatus.REFUNDED;
+
+            case FAILED, CANCELLED, REFUNDED -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException(
+                    "Invalid payment status transition: "
+                    + status + " -> " + newStatus);
+        }
+
+        this.status = newStatus;
+    }
+
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getBillId() {
+        return billId;
+    }
+
+    public void setBillId(Long billId) {
+        this.billId = billId;
     }
 
     public BigDecimal getAmount() {

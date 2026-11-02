@@ -1,16 +1,21 @@
-
 package com.myhourly.jewellery.payment.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
 public class RefundRequestDto {
 
     @NotNull(message = "Refund amount is required")
-    @Positive(message = "Refund amount must be greater than zero")
+    @DecimalMin(
+            value = "0.01",
+            message = "Refund amount must be at least 0.01"
+    )
+    @Digits(integer = 10, fraction = 2,
+            message = "Refund amount allows at most 10 digits and 2 decimal places")
     private BigDecimal amount;
 
     @NotBlank(message = "Refund reason is required")

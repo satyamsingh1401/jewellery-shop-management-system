@@ -1,7 +1,8 @@
-
 package com.myhourly.jewellery.payment.dto;
 
 import com.myhourly.jewellery.payment.enums.PaymentMethod;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
@@ -9,14 +10,28 @@ import java.math.BigDecimal;
 
 public class PaymentRequestDto {
 
+    @NotNull(message = "Bill ID is required")
+    @Positive(message = "Bill ID must be greater than zero")
+    private Long billId;
+
     @NotNull(message = "Payment amount is required")
-    @Positive(message = "Payment amount must be greater than zero")
+    @DecimalMin(value = "0.01", message = "Payment amount must be at least 0.01")
+    @Digits(integer = 10, fraction = 2,
+            message = "Payment amount allows at most 10 digits and 2 decimal places")
     private BigDecimal amount;
 
     @NotNull(message = "Payment method is required")
     private PaymentMethod paymentMethod;
 
     public PaymentRequestDto() {
+    }
+
+    public Long getBillId() {
+        return billId;
+    }
+
+    public void setBillId(Long billId) {
+        this.billId = billId;
     }
 
     public BigDecimal getAmount() {

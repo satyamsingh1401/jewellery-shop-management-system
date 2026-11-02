@@ -1,4 +1,3 @@
-
 package com.myhourly.jewellery.payment.controller;
 
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
@@ -21,7 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -41,7 +40,7 @@ class PaymentControllerTest {
         when(paymentService.getAllPayments()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123")))
+                .with(user("user")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
@@ -56,7 +55,7 @@ class PaymentControllerTest {
         when(paymentService.getPaymentById(1L)).thenReturn(response);
 
         mockMvc.perform(get("/api/payments/1")
-                .with(httpBasic("user", "PaymentTest@123")))
+                .with(user("user")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.amount").value(2500.00));
@@ -74,13 +73,14 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
+                    "billId": 1,
                     "amount": 0,
                     "paymentMethod": "UPI"
                 }
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123"))
+                .with(user("user"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -92,12 +92,13 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
+                    "billId": 1,
                     "paymentMethod": "UPI"
                 }
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123"))
+                .with(user("user"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -112,18 +113,20 @@ class PaymentControllerTest {
         response.setAmount(new BigDecimal("1500.00"));
         response.setStatus(PaymentStatus.PENDING);
 
-        when(paymentService.createPayment(any(PaymentRequestDto.class)))
+        when(paymentService.createPayment(
+                any(PaymentRequestDto.class), any(String.class)))
                 .thenReturn(response);
 
         String requestJson = """
                 {
+                    "billId": 1,
                     "amount": 1500,
                     "paymentMethod": "UPI"
                 }
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123"))
+                .with(user("user"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -137,13 +140,14 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
+                    "billId": 1,
                     "amount": 1500,
                     "paymentMethod": "INVALID"
                 }
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123"))
+                .with(user("user"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -157,23 +161,23 @@ class PaymentControllerTest {
                         HttpStatus.NOT_FOUND, "Payment not found: 999"));
 
         mockMvc.perform(get("/api/payments/999")
-                .with(httpBasic("user", "PaymentTest@123")))
+                .with(user("user")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void createPaymentWithMalformedJsonShouldReturnStandardError()
             throws Exception {
-
         String requestJson = """
                 {
+                    "billId": 1,
                     "amount": 500,
                     "paymentMethod":
                 }
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123"))
+                .with(user("user"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -188,15 +192,15 @@ class PaymentControllerTest {
     @Test
     void createPaymentWithMissingPaymentMethodShouldReturnValidationError()
             throws Exception {
-
         String requestJson = """
                 {
+                    "billId": 1,
                     "amount": 500
                 }
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(httpBasic("user", "PaymentTest@123"))
+                .with(user("user"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -208,21 +212,318 @@ class PaymentControllerTest {
     }
 
     @Test
+    void createPaymentWithMissingBillIdShouldReturnValidationError()
+            throws Exception {
+        String requestJson = """
+                {
+                    "amount": 500,
+                    "paymentMethod": "UPI"
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("billId: Bill ID is required"));
+    }
+
+    @Test
+    void createPaymentWithInvalidBillIdShouldReturnBadRequest()
+            throws Exception {
+        String requestJson = """
+                {
+                    "billId": 0,
+                    "amount": 500,
+                    "paymentMethod": "UPI"
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getMissingPaymentShouldReturnStandardErrorResponse()
             throws Exception {
-
         when(paymentService.getPaymentById(999L))
                 .thenThrow(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Payment not found: 999"));
+                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
 
         mockMvc.perform(get("/api/payments/999")
-                .with(httpBasic("user", "PaymentTest@123")))
+                .with(user("user")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message")
                         .value("Payment not found: 999"))
                 .andExpect(jsonPath("$.path").value("/api/payments/999"));
+    }
+
+    // ---------------------------------------------------------------
+    // payments for a bill
+    // ---------------------------------------------------------------
+
+    @Test
+    void getPaymentsForBillShouldReturnPayments() throws Exception {
+        PaymentResponseDto response = new PaymentResponseDto();
+        response.setId(3L);
+        response.setBillId(7L);
+        response.setStatus(PaymentStatus.COMPLETED);
+
+        when(paymentService.getPaymentsForBill(7L))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/payments/bill/7")
+                .with(user("user")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").value(3))
+                .andExpect(jsonPath("$[0].billId").value(7));
+    }
+
+    @Test
+    void getPaymentsForBillWithoutAuthenticationShouldReturnUnauthorized()
+            throws Exception {
+        mockMvc.perform(get("/api/payments/bill/7"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ---------------------------------------------------------------
+    // confirm / fail / cancel
+    // ---------------------------------------------------------------
+
+    @Test
+    void confirmPaymentShouldReturnCompletedPayment() throws Exception {
+        PaymentResponseDto response = new PaymentResponseDto();
+        response.setId(5L);
+        response.setStatus(PaymentStatus.COMPLETED);
+
+        when(paymentService.confirmPayment(5L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/payments/5/confirm")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(5))
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    void confirmPaymentWithoutAuthenticationShouldReturnUnauthorized()
+            throws Exception {
+        mockMvc.perform(post("/api/payments/5/confirm").with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void confirmMissingPaymentShouldReturnNotFound() throws Exception {
+        when(paymentService.confirmPayment(999L))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
+
+        mockMvc.perform(post("/api/payments/999/confirm")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void confirmNonPendingPaymentShouldReturnBadRequest() throws Exception {
+        when(paymentService.confirmPayment(6L))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Only pending payments can be moved to COMPLETED"));
+
+        mockMvc.perform(post("/api/payments/6/confirm")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void failPaymentShouldReturnFailedPayment() throws Exception {
+        PaymentResponseDto response = new PaymentResponseDto();
+        response.setId(5L);
+        response.setStatus(PaymentStatus.FAILED);
+
+        when(paymentService.failPayment(5L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/payments/5/fail")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FAILED"));
+    }
+
+    @Test
+    void failNonPendingPaymentShouldReturnBadRequest() throws Exception {
+        when(paymentService.failPayment(6L))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Only pending payments can be moved to FAILED"));
+
+        mockMvc.perform(post("/api/payments/6/fail")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cancelPaymentShouldReturnCancelledPayment() throws Exception {
+        PaymentResponseDto response = new PaymentResponseDto();
+        response.setId(5L);
+        response.setStatus(PaymentStatus.CANCELLED);
+
+        when(paymentService.cancelPayment(5L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/payments/5/cancel")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void cancelMissingPaymentShouldReturnNotFound() throws Exception {
+        when(paymentService.cancelPayment(999L))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
+
+        mockMvc.perform(post("/api/payments/999/cancel")
+                .with(user("user"))
+                .with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    // ---------------------------------------------------------------
+    // refund
+    // ---------------------------------------------------------------
+
+    @Test
+    void refundWithZeroAmountShouldReturnBadRequest()
+            throws Exception {
+        String requestJson = """
+                {
+                    "amount": 0,
+                    "reason": "Test refund"
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refundWithMissingAmountShouldReturnBadRequest()
+            throws Exception {
+        String requestJson = """
+                {
+                    "reason": "Test refund"
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refundWithBlankReasonShouldReturnBadRequest()
+            throws Exception {
+        String requestJson = """
+                {
+                    "amount": 10,
+                    "reason": "   "
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refundWithNegativeAmountShouldReturnBadRequest()
+            throws Exception {
+        String requestJson = """
+                {
+                    "amount": -10,
+                    "reason": "Test refund"
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refundWithMissingReasonShouldReturnBadRequest()
+            throws Exception {
+        String requestJson = """
+                {
+                    "amount": 10
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refundWithValidRequestShouldReturnOk()
+            throws Exception {
+        PaymentResponseDto response = new PaymentResponseDto();
+        response.setId(1L);
+        response.setAmount(new BigDecimal("100.00"));
+        response.setRefundedAmount(new BigDecimal("10.00"));
+        response.setStatus(PaymentStatus.PARTIALLY_REFUNDED);
+
+        when(paymentService.recordRefund(
+                1L, new BigDecimal("10"), "Test refund"))
+                .thenReturn(response);
+
+        String requestJson = """
+                {
+                    "amount": 10,
+                    "reason": "Test refund"
+                }
+                """;
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                .with(user("user"))
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.refundedAmount").value(10.00))
+                .andExpect(jsonPath("$.status")
+                        .value("PARTIALLY_REFUNDED"));
     }
 }
