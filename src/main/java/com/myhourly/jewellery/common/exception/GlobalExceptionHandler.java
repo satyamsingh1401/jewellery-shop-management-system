@@ -20,7 +20,7 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, WebRequest request){
+    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, WebRequest request) {
 
         return build(
                 HttpStatus.NOT_FOUND,
@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ApiError> handleDuplicate(DuplicateResourceException ex, WebRequest request){
+    public ResponseEntity<ApiError> handleDuplicate(DuplicateResourceException ex, WebRequest request) {
         return build(
                 HttpStatus.CONFLICT,
                 ex.getMessage(),
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessValidationException.class)
-    public ResponseEntity<ApiError> handleBusinessValidation(BusinessValidationException ex, WebRequest request){
+    public ResponseEntity<ApiError> handleBusinessValidation(BusinessValidationException ex, WebRequest request) {
         return build(
                 HttpStatus.BAD_REQUEST,
                 ex.getMessage(),
@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
         );
     }
 
-    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex , WebRequest request ){
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, WebRequest request) {
 
         Map<String, String> errors = new LinkedHashMap<>();
 
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ApiError> build(
             HttpStatus status, String message, WebRequest request,
-            Map<String,String> fieldErrors){
+            Map<String, String> fieldErrors) {
         String path = ((ServletWebRequest) request)
                 .getRequest().getRequestURI();
 
@@ -113,8 +113,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
 
     }
-
-
 
 
 }
