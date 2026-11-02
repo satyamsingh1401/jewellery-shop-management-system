@@ -73,8 +73,9 @@ public class Product {
         updatedAt=now;
     }
 
-    protected  void onUpdate(){
-        updatedAt=Instant.now();
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
     }
 
 public void updateDetails(String sku, String name, String category,
