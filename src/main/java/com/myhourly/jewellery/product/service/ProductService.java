@@ -200,10 +200,8 @@ public class ProductService {
             );
         }
 
-        // Step 5: Map the request fields to the existing entity.
-        productMapper.updateEntity(product, request);
 
-        // Step 6: Apply normalized values and updated product details.
+        // Apply normalized values and updated product details.
         product.updateDetails(
                 sku,
                 request.name().trim(),
