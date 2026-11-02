@@ -6,9 +6,9 @@ import com.myhourly.jewellery.product.entity.Product;
 import org.springframework.stereotype.Component;
 
 @Component
-public class productMapper {
+public class ProductMapper {
 
-    public Product toEntity(ProductRequestDto request){
+    public Product toEntity(ProductRequestDto request) {
         Product product = Product.create();
         product.updateDetails(
                 request.sku(),
@@ -23,7 +23,7 @@ public class productMapper {
         return product;
     }
 
-    public void updateEntity(Product product,ProductRequestDto request){
+    public void updateEntity(Product product, ProductRequestDto request) {
 
         product.updateDetails(
                 request.sku(),
@@ -38,8 +38,8 @@ public class productMapper {
         );
     }
 
-    public ProductResponseDto toResponse(Product product){
-        return  new ProductResponseDto(
+    public ProductResponseDto toResponse(Product product) {
+        return new ProductResponseDto(
                 product.getId(),
                 product.getSku(),
                 product.getName(),
