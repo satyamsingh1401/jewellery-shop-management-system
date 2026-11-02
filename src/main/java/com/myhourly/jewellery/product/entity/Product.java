@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
