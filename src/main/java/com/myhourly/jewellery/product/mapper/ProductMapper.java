@@ -8,35 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductMapper {
 
-    public Product toEntity(ProductRequestDto request) {
-        Product product = Product.create();
-        product.updateDetails(
-                request.sku(),
-                request.name(),
-                request.category(),
-                request.metalType(),
-                request.purity(),
-                request.grossWeight(),
-                request.stoneWeight(),
-                request.makingChargeType(),
-                request.makingChargeValue());
-        return product;
-    }
-
-    public void updateEntity(Product product, ProductRequestDto request) {
-
-        product.updateDetails(
-                request.sku(),
-                request.name(),
-                request.category(),
-                request.metalType(),
-                request.purity(),
-                request.grossWeight(),
-                request.stoneWeight(),
-                request.makingChargeType(),
-                request.makingChargeValue()
-        );
-    }
 
     public ProductResponseDto toResponse(Product product) {
         return new ProductResponseDto(

@@ -9,13 +9,6 @@ import java.math.BigDecimal;
 
 public record ProductRequestDto(
 
-        @NotBlank(message = "SKU is required")
-        @Size(max = 50)
-        @Pattern(
-                regexp ="^[A-Za-z0-9_-]+$" ,
-                message = "SKU can contain letters, numbers, _ and -only"
-        )
-        String sku,
 
         @NotBlank(message = "Product name is required")
         @Size(max = 150)
@@ -38,12 +31,12 @@ public record ProductRequestDto(
                 message = "Gross weight must be greater than zero"
         )
         @Digits(integer = 9, fraction = 3)
-                BigDecimal grossWeight,
+        BigDecimal grossWeight,
 
 
         @NotNull(message = "stone weight is required")
         @DecimalMin(
-                value="0.000",
+                value = "0.000",
                 message = "stone weight cannot be negative"
         )
         @Digits(integer = 9, fraction = 3)
@@ -62,7 +55,6 @@ public record ProductRequestDto(
 
 
 ) {
-
 
 
 }

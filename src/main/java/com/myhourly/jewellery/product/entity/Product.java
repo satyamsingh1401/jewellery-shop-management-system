@@ -100,7 +100,18 @@ public class Product {
         this.active = active;
     }
 
+    public void generateSku() {
+        if (this.id == null || this.metalType == null) {
+            throw new IllegalStateException(
+                    "Product ID and metal type are required to generate SKU"
+            );
+        }
+
+        this.sku = this.metalType.name() + "-" + String.format("%06d", this.id);
+    }
+
     public static Product create() {
+
         return new Product();
     }
 

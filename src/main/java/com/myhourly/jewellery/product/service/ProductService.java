@@ -1,7 +1,7 @@
 package com.myhourly.jewellery.product.service;
 
 import com.myhourly.jewellery.common.exception.BusinessValidationException;
-import com.myhourly.jewellery.common.exception.DuplicateResourceException;
+
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.product.dto.ProductRequestDto;
 import com.myhourly.jewellery.product.dto.ProductResponseDto;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Locale;
+
 
 @Service
 @RequiredArgsConstructor
@@ -35,52 +35,93 @@ public class ProductService {
 //    Validates the stone weight against the gross weight.
 
     private void validateWeights(BigDecimal grossWeight, BigDecimal stoneWeight) {
-        if (stoneWeight.compareTo(grossWeight) > 0) {
-            throw new BusinessValidationException("stone weight cannot exceed gross weight");
+
+        // Gross weight must be greater than zero.
+        if (grossWeight.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessValidationException(
+                    "Gross weight must be greater than zero"
+            );
+        }
+
+        // Stone weight cannot be negative.
+        if (stoneWeight.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessValidationException(
+                    "Stone weight cannot be negative"
+            );
+        }
+
+        // Stone weight must be less than gross weight.
+        if (stoneWeight.compareTo(grossWeight) >= 0) {
+            throw new BusinessValidationException(
+                    "Stone weight must be less than gross weight. Net weight must be greater than zero"
+            );
         }
     }
 
-    //    Normalizes the SKU by removing extra whitespace and converting it to uppercase.
-    private String normalizeSku(String sku) {
-        return sku.trim().toUpperCase(Locale.ROOT);
-    }
+    private void validateMetalPurity(
+            MetalType metalType,
+            Purity purity) {
 
+        boolean validCombination = switch (metalType) {
+
+            case GOLD -> purity == Purity.K18 || purity == Purity.K22 || purity == Purity.K24;
+
+            case SILVER -> purity == Purity.SILVER_925;
+
+            case PLATINUM -> purity == Purity.PLATINUM_950;
+        };
+
+        if (!validCombination) {
+            throw new BusinessValidationException(
+                    "Invalid purity for metal type: " + metalType
+            );
+        }
+    }
 
     @Transactional
-    public ProductResponseDto create(ProductRequestDto productRequestDto) {
+    public ProductResponseDto create(ProductRequestDto request) {
 
-        validateWeights(productRequestDto.grossWeight(), productRequestDto.stoneWeight());
-
-        String sku = normalizeSku(productRequestDto.sku());
-
-        if (productRepository.existsBySku(sku)) {
-            throw new DuplicateResourceException("A product with SKU" + sku + " already exists");
-        }
-
-//        Convert the request DTO into a Product entity.
-        Product product = productMapper.toEntity(productRequestDto);
-
-//        store normalized SKU consistently
-
-        product.updateDetails(
-                sku,
-                productRequestDto.name().trim(),
-                productRequestDto.category().trim(),
-                productRequestDto.metalType(),
-                productRequestDto.purity(),
-                productRequestDto.grossWeight(),
-                productRequestDto.stoneWeight(),
-                productRequestDto.makingChargeType(),
-                productRequestDto.makingChargeValue()
+        // Step 1: Validate product weights.
+        validateWeights(
+                request.grossWeight(),
+                request.stoneWeight()
         );
 
-//      Save the product to the database.
-        Product saved = productRepository.save(product);
+        // Validate Purity
+        validateMetalPurity(
+                request.metalType(),
+                request.purity()
+        );
+        // Step 2: Create the product entity.
+        Product product = Product.create();
 
-//      Convert the saved entity into a response DTO.
-        return productMapper.toResponse(saved);
+        // Step 3: Set product details.
+        // Temporary SKU is used because the database column is NOT NULL.
+        product.updateDetails(
+                "TEMP-" + java.util.UUID.randomUUID(),
+                request.name().trim(),
+                request.category().trim(),
+                request.metalType(),
+                request.purity(),
+                request.grossWeight(),
+                request.stoneWeight(),
+                request.makingChargeType(),
+                request.makingChargeValue()
+        );
 
+        // Step 4: Save once to generate the database ID.
+        Product saved = productRepository.saveAndFlush(product);
+
+        // Step 5: Generate the final SKU using metal type and database ID.
+        saved.generateSku();
+
+        // Step 6: Save the final generated SKU.
+        Product finalProduct = productRepository.save(saved);
+
+        // Step 7: Return product response.
+        return productMapper.toResponse(finalProduct);
     }
+
 
     public ProductResponseDto getById(Long id) {
         Product product = productRepository.findById(id)
@@ -187,23 +228,17 @@ public class ProductService {
                 request.stoneWeight()
         );
 
+        validateMetalPurity(
+                request.metalType(),
+                request.purity()
+        );
+
         // Find the existing product.
         Product product = findProduct(id);
 
-        // Normalize the SKU before checking for duplicates.
-        String sku = normalizeSku(request.sku());
-
-        // Prevent another product from using the same SKU.
-        if (productRepository.existsBySkuAndIdNot(sku, id)) {
-            throw new DuplicateResourceException(
-                    "A product with SKU " + sku + " already exists"
-            );
-        }
-
-
         // Apply normalized values and updated product details.
         product.updateDetails(
-                sku,
+                product.getSku(),
                 request.name().trim(),
                 request.category().trim(),
                 request.metalType(),
