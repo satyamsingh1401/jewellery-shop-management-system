@@ -59,6 +59,8 @@ public class PaymentService {
         payment.setAmount(request.getAmount());
         payment.setPaymentMethod(request.getPaymentMethod());
         payment.setCreatedBy(createdBy.trim());
+        payment.setExternalReference(
+                normalizeReference(request.getExternalReference()));
 
         // Keep payment pending until the payment process confirms success.
         payment.setStatus(PaymentStatus.PENDING);
@@ -267,6 +269,11 @@ public class PaymentService {
                     HttpStatus.BAD_REQUEST,
                     label + " cannot have more than 2 decimal places");
         }
+    }
+
+    // Blank reference means "no reference".
+    private String normalizeReference(String value) {
+        return isBlank(value) ? null : value.trim();
     }
 
     private boolean isBlank(String value) {

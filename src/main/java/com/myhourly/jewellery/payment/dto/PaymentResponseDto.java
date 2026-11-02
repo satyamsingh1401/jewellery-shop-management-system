@@ -1,4 +1,3 @@
-
 package com.myhourly.jewellery.payment.dto;
 
 import com.myhourly.jewellery.payment.enums.PaymentMethod;
@@ -17,6 +16,7 @@ public class PaymentResponseDto {
     private BigDecimal refundedAmount;
     private String currency;
     private String createdBy;
+    private String externalReference;
     private String refundReason;
     private LocalDateTime paymentDate;
     private LocalDateTime createdAt;
@@ -87,6 +87,14 @@ public class PaymentResponseDto {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public String getExternalReference() {
+        return externalReference;
+    }
+
+    public void setExternalReference(String externalReference) {
+        this.externalReference = externalReference;
     }
 
     public String getRefundReason() {

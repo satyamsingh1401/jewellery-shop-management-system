@@ -1,7 +1,7 @@
 package com.myhourly.jewellery.payment.mapper;
 
-import com.myhourly.jewellery.payment.dto.PaymentResponseDto;
 import com.myhourly.jewellery.payment.entity.Payment;
+import com.myhourly.jewellery.payment.dto.PaymentResponseDto;
 
 public final class PaymentMapper {
 
@@ -23,6 +23,7 @@ public final class PaymentMapper {
         dto.setRefundedAmount(payment.getRefundedAmount());
         dto.setCurrency(payment.getCurrency());
         dto.setCreatedBy(payment.getCreatedBy());
+        dto.setExternalReference(payment.getExternalReference());
         dto.setRefundReason(payment.getRefundReason());
         dto.setPaymentDate(payment.getPaymentDate());
         dto.setCreatedAt(payment.getCreatedAt());

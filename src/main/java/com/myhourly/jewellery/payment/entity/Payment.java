@@ -56,6 +56,11 @@ public class Payment {
     @Column(length = 100)
     private String createdBy;
 
+    // Reference from the payer's bank/UPI app (UPI transaction id, cheque
+    // number, ...). Optional.
+    @Column(length = 100)
+    private String externalReference;
+
     @Column(length = 500)
     private String refundReason;
 
@@ -82,9 +87,7 @@ public class Payment {
         createdAt = now;
         updatedAt = now;
 
-        if (paymentDate == null) {
-            paymentDate = now;
-        }
+        // paymentDate stays empty until the payment is confirmed.
 
         if (refundedAmount == null) {
             refundedAmount = BigDecimal.ZERO;
@@ -203,6 +206,14 @@ public class Payment {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public String getExternalReference() {
+        return externalReference;
+    }
+
+    public void setExternalReference(String externalReference) {
+        this.externalReference = externalReference;
     }
 
     public String getRefundReason() {

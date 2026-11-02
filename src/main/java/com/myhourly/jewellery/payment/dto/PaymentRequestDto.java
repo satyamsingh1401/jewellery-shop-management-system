@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -23,6 +24,10 @@ public class PaymentRequestDto {
     @NotNull(message = "Payment method is required")
     private PaymentMethod paymentMethod;
 
+    @Size(max = 100,
+            message = "External reference must be at most 100 characters")
+    private String externalReference;
+
     public PaymentRequestDto() {
     }
 
@@ -40,6 +45,14 @@ public class PaymentRequestDto {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getExternalReference() {
+        return externalReference;
+    }
+
+    public void setExternalReference(String externalReference) {
+        this.externalReference = externalReference;
     }
 
     public PaymentMethod getPaymentMethod() {
