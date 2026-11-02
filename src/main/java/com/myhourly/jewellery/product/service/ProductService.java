@@ -96,9 +96,8 @@ public class ProductService {
         Product product = Product.create();
 
         // Step 3: Set product details.
-        // Temporary SKU is used because the database column is NOT NULL.
+       
         product.updateDetails(
-                "TEMP-" + java.util.UUID.randomUUID(),
                 request.name().trim(),
                 request.category().trim(),
                 request.metalType(),
@@ -238,7 +237,6 @@ public class ProductService {
 
         // Apply normalized values and updated product details.
         product.updateDetails(
-                product.getSku(),
                 request.name().trim(),
                 request.category().trim(),
                 request.metalType(),
@@ -249,8 +247,13 @@ public class ProductService {
                 request.makingChargeValue()
         );
 
-        // Convert the updated entity into a response DTO.
-        return productMapper.toResponse(product);
+        Product saved = productRepository.saveAndFlush(product);
+
+        saved.generateSku();
+
+        Product finalProduct = productRepository.save(saved);
+
+        return productMapper.toResponse(finalProduct);
     }
 
     private Product findProduct(Long id) {

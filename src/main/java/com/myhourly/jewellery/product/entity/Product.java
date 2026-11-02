@@ -22,7 +22,7 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 50)
+    @Column(length = 50)
     private String sku;
 
     @Column(nullable = false, length = 150)
@@ -77,21 +77,28 @@ public class Product {
         updatedAt = Instant.now();
     }
 
-    public void updateDetails(String sku, String name, String category,
-                              MetalType metalType, Purity purity, BigDecimal grossWeight
-            , BigDecimal stoneWeight, MakingChargeType makingChargeType, BigDecimal makingChargeValue) {
-        this.sku = sku;
+    public void updateDetails(
+            String name,
+            String category,
+            MetalType metalType,
+            Purity purity,
+            BigDecimal grossWeight,
+            BigDecimal stoneWeight,
+            MakingChargeType makingChargeType,
+            BigDecimal makingChargeValue) {
+
         this.name = name;
         this.category = category;
         this.metalType = metalType;
         this.purity = purity;
         this.grossWeight = grossWeight;
         this.stoneWeight = stoneWeight;
+
+        // Automatically calculate net weight
         this.netWeight = grossWeight.subtract(stoneWeight);
 
         this.makingChargeType = makingChargeType;
         this.makingChargeValue = makingChargeValue;
-
     }
 
     public void changeStatus(boolean active) {
