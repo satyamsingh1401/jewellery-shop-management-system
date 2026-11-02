@@ -6,6 +6,7 @@ import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.product.dto.ProductRequestDto;
 import com.myhourly.jewellery.product.dto.ProductResponseDto;
 import com.myhourly.jewellery.product.entity.Product;
+import com.myhourly.jewellery.product.enums.MakingChargeType;
 import com.myhourly.jewellery.product.enums.MetalType;
 import com.myhourly.jewellery.product.enums.Purity;
 import com.myhourly.jewellery.product.mapper.ProductMapper;
@@ -92,11 +93,17 @@ public class ProductService {
                 request.metalType(),
                 request.purity()
         );
+
+        validateMakingCharge(
+                request.makingChargeType(),
+                request.makingChargeValue()
+        );
+
         // Step 2: Create the product entity.
         Product product = Product.create();
 
         // Step 3: Set product details.
-       
+
         product.updateDetails(
                 request.name().trim(),
                 request.category().trim(),
@@ -232,6 +239,11 @@ public class ProductService {
                 request.purity()
         );
 
+        validateMakingCharge(
+                request.makingChargeType(),
+                request.makingChargeValue()
+        );
+
         // Find the existing product.
         Product product = findProduct(id);
 
@@ -279,6 +291,46 @@ public class ProductService {
 
         // Convert the updated entity into response DTO.
         return productMapper.toResponse(product);
+    }
+
+    private void validateMakingCharge(
+            MakingChargeType type,
+            BigDecimal value) {
+
+        if (type == null || value == null) {
+            throw new BusinessValidationException(
+                    "Making charge type and value are required"
+            );
+        }
+
+        switch (type) {
+
+            case FIXED -> {
+                if (value.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new BusinessValidationException(
+                            "Fixed making charge cannot be negative"
+                    );
+                }
+            }
+
+            case PER_GRAM -> {
+                if (value.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new BusinessValidationException(
+                            "Per gram making charge cannot be negative"
+                    );
+                }
+            }
+
+            case PERCENTAGE -> {
+                if (value.compareTo(BigDecimal.ZERO) < 0
+                        || value.compareTo(new BigDecimal("100")) > 0) {
+
+                    throw new BusinessValidationException(
+                            "Making charge percentage must be between 0 and 100"
+                    );
+                }
+            }
+        }
     }
 
 }
