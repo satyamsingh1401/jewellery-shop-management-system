@@ -56,6 +56,14 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    public User(String name, String email, String passwordHash, Role role) {
+        this.name = name;
+        this.email = email.trim().toLowerCase(java.util.Locale.ROOT);
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.active = true;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
