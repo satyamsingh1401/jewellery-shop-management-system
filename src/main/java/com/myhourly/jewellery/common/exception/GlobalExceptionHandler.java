@@ -1,6 +1,7 @@
 package com.myhourly.jewellery.common.exception;
 
 import com.myhourly.jewellery.common.response.ApiError;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -113,6 +114,31 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(status).body(body);
 
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(
+            ConstraintViolationException ex,
+            WebRequest request) {
+
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        ex.getConstraintViolations().forEach(violation -> {
+
+            String field = violation.getPropertyPath().toString();
+
+            errors.putIfAbsent(
+                    field,
+                    violation.getMessage()
+            );
+        });
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed",
+                request,
+                errors
+        );
     }
 
 
