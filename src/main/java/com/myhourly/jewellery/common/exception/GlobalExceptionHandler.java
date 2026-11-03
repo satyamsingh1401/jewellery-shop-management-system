@@ -1,6 +1,7 @@
 package com.myhourly.jewellery.common.exception;
 
 import com.myhourly.jewellery.common.response.ApiError;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, WebRequest request){
+    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, WebRequest request) {
 
         return build(
                 HttpStatus.NOT_FOUND,
@@ -31,7 +32,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ApiError> handleDuplicate(DuplicateResourceException ex, WebRequest request){
+    public ResponseEntity<ApiError> handleDuplicate(DuplicateResourceException ex, WebRequest request) {
         return build(
                 HttpStatus.CONFLICT,
                 ex.getMessage(),
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessValidationException.class)
-    public ResponseEntity<ApiError> handleBusinessValidation(BusinessValidationException ex, WebRequest request){
+    public ResponseEntity<ApiError> handleBusinessValidation(BusinessValidationException ex, WebRequest request) {
         return build(
                 HttpStatus.BAD_REQUEST,
                 ex.getMessage(),
@@ -51,7 +52,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex , WebRequest request ){
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, WebRequest request) {
 
         Map<String, String> errors = new LinkedHashMap<>();
 
@@ -99,7 +100,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ApiError> build(
             HttpStatus status, String message, WebRequest request,
-            Map<String,String> fieldErrors){
+            Map<String, String> fieldErrors) {
         String path = ((ServletWebRequest) request)
                 .getRequest().getRequestURI();
 
@@ -115,7 +116,30 @@ public class GlobalExceptionHandler {
 
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(
+            ConstraintViolationException ex,
+            WebRequest request) {
 
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        ex.getConstraintViolations().forEach(violation -> {
+
+            String field = violation.getPropertyPath().toString();
+
+            errors.putIfAbsent(
+                    field,
+                    violation.getMessage()
+            );
+        });
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed",
+                request,
+                errors
+        );
+    }
 
 
 }
