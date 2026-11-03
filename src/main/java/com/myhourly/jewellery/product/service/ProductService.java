@@ -259,13 +259,11 @@ public class ProductService {
                 request.makingChargeValue()
         );
 
-        Product saved = productRepository.saveAndFlush(product);
 
-        saved.generateSku();
+        Product saved = productRepository.save(product);
 
-        Product finalProduct = productRepository.save(saved);
-
-        return productMapper.toResponse(finalProduct);
+        return productMapper.toResponse(saved);
+//        t
     }
 
     private Product findProduct(Long id) {
