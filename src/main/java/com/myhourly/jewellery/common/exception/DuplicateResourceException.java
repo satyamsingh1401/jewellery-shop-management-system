@@ -1,0 +1,8 @@
+package com.myhourly.jewellery.common.exception;
+
+public class DuplicateResourceException extends RuntimeException{
+
+    public DuplicateResourceException(String message){
+        super(message);
+    }
+}
