@@ -1,5 +1,7 @@
 package com.myhourly.jewellery.payment.controller;
 
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
 import com.myhourly.jewellery.payment.dto.PaymentResponseDto;
 import com.myhourly.jewellery.payment.enums.PaymentStatus;
@@ -8,10 +10,8 @@ import com.myhourly.jewellery.payment.service.PaymentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -157,8 +157,7 @@ class PaymentControllerTest {
     @Test
     void getPaymentByMissingIdShouldReturnNotFound() throws Exception {
         when(paymentService.getPaymentById(999L))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
+                .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(get("/api/payments/999")
                 .with(user("user")))
@@ -185,7 +184,7 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.message")
-                        .value("Invalid or malformed request body"))
+                        .value("Request body contains invalid JSON or enum values"))
                 .andExpect(jsonPath("$.path").value("/api/payments"));
     }
 
@@ -207,7 +206,9 @@ class PaymentControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message")
-                        .value("paymentMethod: Payment method is required"))
+                        .value("Request validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.paymentMethod")
+                        .value("Payment method is required"))
                 .andExpect(jsonPath("$.path").value("/api/payments"));
     }
 
@@ -228,7 +229,9 @@ class PaymentControllerTest {
                 .content(requestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
-                        .value("billId: Bill ID is required"));
+                        .value("Request validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.billId")
+                        .value("Bill ID is required"));
     }
 
     @Test
@@ -254,8 +257,7 @@ class PaymentControllerTest {
     void getMissingPaymentShouldReturnStandardErrorResponse()
             throws Exception {
         when(paymentService.getPaymentById(999L))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
+                .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(get("/api/payments/999")
                 .with(user("user")))
@@ -326,8 +328,7 @@ class PaymentControllerTest {
     @Test
     void confirmMissingPaymentShouldReturnNotFound() throws Exception {
         when(paymentService.confirmPayment(999L))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
+                .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(post("/api/payments/999/confirm")
                 .with(user("user"))
@@ -338,9 +339,7 @@ class PaymentControllerTest {
     @Test
     void confirmNonPendingPaymentShouldReturnBadRequest() throws Exception {
         when(paymentService.confirmPayment(6L))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Only pending payments can be moved to COMPLETED"));
+                .thenThrow(new BusinessValidationException("Only pending payments can be moved to COMPLETED"));
 
         mockMvc.perform(post("/api/payments/6/confirm")
                 .with(user("user"))
@@ -366,9 +365,7 @@ class PaymentControllerTest {
     @Test
     void failNonPendingPaymentShouldReturnBadRequest() throws Exception {
         when(paymentService.failPayment(6L))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Only pending payments can be moved to FAILED"));
+                .thenThrow(new BusinessValidationException("Only pending payments can be moved to FAILED"));
 
         mockMvc.perform(post("/api/payments/6/fail")
                 .with(user("user"))
@@ -394,8 +391,7 @@ class PaymentControllerTest {
     @Test
     void cancelMissingPaymentShouldReturnNotFound() throws Exception {
         when(paymentService.cancelPayment(999L))
-                .thenThrow(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Payment not found: 999"));
+                .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(post("/api/payments/999/cancel")
                 .with(user("user"))

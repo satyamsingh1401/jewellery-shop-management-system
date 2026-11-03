@@ -1,5 +1,7 @@
 package com.myhourly.jewellery.payment.service;
 
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.payment.entity.Payment;
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
 import com.myhourly.jewellery.payment.dto.PaymentResponseDto;
@@ -11,10 +13,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class PaymentService {
@@ -34,14 +34,12 @@ public class PaymentService {
             String createdBy) {
 
         if (request == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Payment request is required");
         }
 
         if (createdBy == null || createdBy.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "The payment recorder must be identified");
         }
 
@@ -49,8 +47,7 @@ public class PaymentService {
         validateAmount(request.getAmount(), "Payment amount");
 
         if (request.getPaymentMethod() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Payment method is required");
         }
 
@@ -84,8 +81,7 @@ public class PaymentService {
         validateId(id);
 
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Payment not found: " + id));
 
         return PaymentMapper.toResponseDto(payment);
@@ -134,30 +130,26 @@ public class PaymentService {
 
         // Lock the payment row to prevent concurrent refund updates.
         Payment payment = paymentRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Payment not found: " + id));
 
         if (payment.getStatus() != PaymentStatus.COMPLETED
                 && payment.getStatus() != PaymentStatus.PARTIALLY_REFUNDED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Only successful payments can be refunded");
         }
 
         validateAmount(refundAmount, "Refund amount");
 
         if (refundReason == null || refundReason.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Refund reason is required");
         }
 
         BigDecimal paymentAmount = payment.getAmount();
 
         if (paymentAmount == null || paymentAmount.signum() <= 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Payment has an invalid amount");
         }
 
@@ -169,8 +161,7 @@ public class PaymentService {
 
         if (remainingRefundable.signum() <= 0
                 || refundAmount.compareTo(remainingRefundable) > 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Refund exceeds the remaining refundable amount");
         }
 
@@ -181,8 +172,7 @@ public class PaymentService {
                 : payment.getRefundReason() + "; " + newReason;
 
         if (combinedReason.length() > MAX_REASON_LENGTH) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Refund reason history exceeds " + MAX_REASON_LENGTH
                             + " characters; use a shorter reason");
         }
@@ -216,13 +206,11 @@ public class PaymentService {
 
         // Lock the row so confirm/fail/cancel cannot race each other.
         Payment payment = paymentRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Payment not found: " + id));
 
         if (payment.getStatus() != PaymentStatus.PENDING) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Only pending payments can be moved to " + target
                             + "; current status: " + payment.getStatus());
         }
@@ -235,38 +223,33 @@ public class PaymentService {
         try {
             payment.transitionTo(newStatus);
         } catch (IllegalStateException | IllegalArgumentException ex) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     ex.getMessage());
         }
     }
 
     private void validateBillId(Long billId) {
         if (billId == null || billId <= 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Bill ID must be greater than zero");
         }
     }
 
     private void validateId(Long id) {
         if (id == null || id <= 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     "Payment ID must be greater than zero");
         }
     }
 
     private void validateAmount(BigDecimal amount, String label) {
         if (amount == null || amount.compareTo(MIN_AMOUNT) < 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     label + " must be at least 0.01");
         }
 
         if (amount.stripTrailingZeros().scale() > 2) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BusinessValidationException(
                     label + " cannot have more than 2 decimal places");
         }
     }

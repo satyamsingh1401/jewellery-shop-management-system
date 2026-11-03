@@ -1,10 +1,12 @@
 package com.myhourly.jewellery.payment.service;
 
+import com.myhourly.jewellery.payment.entity.Payment;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
 import com.myhourly.jewellery.payment.enums.PaymentMethod;
 import com.myhourly.jewellery.payment.enums.PaymentStatus;
 import com.myhourly.jewellery.payment.repository.PaymentRepository;
-import com.myhourly.jewellery.payment.entity.Payment;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,8 +14,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -76,27 +76,25 @@ class PaymentServiceTest {
 
     @Test
     void createPaymentShouldRejectNullCreatedBy() {
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                BusinessValidationException.class,
                 () -> paymentService.createPayment(validRequest(), null));
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verifyNoInteractions(paymentRepository);
     }
 
     @Test
     void createPaymentShouldRejectBlankCreatedBy() {
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                BusinessValidationException.class,
                 () -> paymentService.createPayment(validRequest(), "   "));
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verifyNoInteractions(paymentRepository);
     }
 
     @Test
     void createPaymentShouldRejectNullRequest() {
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.createPayment(null, STAFF));
 
         verifyNoInteractions(paymentRepository);
@@ -107,7 +105,7 @@ class PaymentServiceTest {
         PaymentRequestDto request = validRequest();
         request.setAmount(null);
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.createPayment(request, STAFF));
 
         verifyNoInteractions(paymentRepository);
@@ -118,7 +116,7 @@ class PaymentServiceTest {
         PaymentRequestDto request = validRequest();
         request.setAmount(new BigDecimal("0.009"));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.createPayment(request, STAFF));
 
         verifyNoInteractions(paymentRepository);
@@ -129,11 +127,10 @@ class PaymentServiceTest {
         PaymentRequestDto request = validRequest();
         request.setAmount(new BigDecimal("10.005"));
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                BusinessValidationException.class,
                 () -> paymentService.createPayment(request, STAFF));
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verifyNoInteractions(paymentRepository);
     }
 
@@ -156,7 +153,7 @@ class PaymentServiceTest {
         PaymentRequestDto request = validRequest();
         request.setPaymentMethod(null);
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.createPayment(request, STAFF));
 
         verifyNoInteractions(paymentRepository);
@@ -171,19 +168,17 @@ class PaymentServiceTest {
         when(paymentRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                ResourceNotFoundException.class,
                 () -> paymentService.getPaymentById(999L));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test
     void getPaymentByIdShouldRejectInvalidId() {
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.getPaymentById(0L));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.getPaymentById(-1L));
 
         verifyNoInteractions(paymentRepository);
@@ -222,13 +217,13 @@ class PaymentServiceTest {
 
     @Test
     void getPaymentsForBillShouldRejectInvalidBillId() {
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.getPaymentsForBill(null));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.getPaymentsForBill(0L));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.getPaymentsForBill(-1L));
 
         verifyNoInteractions(paymentRepository);
@@ -259,17 +254,16 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(999L))
                 .thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                ResourceNotFoundException.class,
                 () -> paymentService.confirmPayment(999L));
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verify(paymentRepository, never()).save(any(Payment.class));
     }
 
     @Test
     void confirmPaymentShouldRejectInvalidId() {
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.confirmPayment(0L));
 
         verifyNoInteractions(paymentRepository);
@@ -289,11 +283,10 @@ class PaymentServiceTest {
             when(paymentRepository.findByIdForUpdate(10L))
                     .thenReturn(Optional.of(payment));
 
-            ResponseStatusException exception = assertThrows(
-                    ResponseStatusException.class,
+            assertThrows(
+                    BusinessValidationException.class,
                     () -> paymentService.confirmPayment(10L));
 
-            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
             assertEquals(status, payment.getStatus());
         }
 
@@ -326,7 +319,7 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.failPayment(10L));
 
         assertEquals(PaymentStatus.COMPLETED, payment.getStatus());
@@ -338,11 +331,9 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(999L))
                 .thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                ResourceNotFoundException.class,
                 () -> paymentService.failPayment(999L));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     // ---------------------------------------------------------------
@@ -371,7 +362,7 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.cancelPayment(10L));
 
         assertEquals(PaymentStatus.FAILED, payment.getStatus());
@@ -380,7 +371,7 @@ class PaymentServiceTest {
 
     @Test
     void cancelPaymentShouldRejectInvalidId() {
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.cancelPayment(-5L));
 
         verifyNoInteractions(paymentRepository);
@@ -395,14 +386,14 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(999L))
                 .thenReturn(Optional.empty());
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(ResourceNotFoundException.class,
                 () -> paymentService.recordRefund(
                         999L, new BigDecimal("500"), "Test refund"));
     }
 
     @Test
     void refundShouldRejectInvalidPaymentId() {
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.recordRefund(
                         0L, new BigDecimal("500"), "Test refund"));
 
@@ -416,7 +407,7 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.recordRefund(
                         10L, new BigDecimal("500"), "Test refund"));
 
@@ -570,12 +561,11 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
+        assertThrows(
+                BusinessValidationException.class,
                 () -> paymentService.recordRefund(
                         10L, new BigDecimal("100"), "abcdefghij"));
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         assertEquals(new BigDecimal("100"), payment.getRefundedAmount());
         verify(paymentRepository, never()).save(any(Payment.class));
     }
@@ -588,7 +578,7 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.recordRefund(
                         10L, new BigDecimal("501"), "Excess refund"));
 
@@ -610,7 +600,7 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.recordRefund(
                         10L, new BigDecimal("100"), "Test refund"));
 
@@ -623,7 +613,7 @@ class PaymentServiceTest {
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
 
-        assertThrows(ResponseStatusException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> paymentService.recordRefund(10L, amount, reason));
 
         verify(paymentRepository, never()).save(any(Payment.class));
