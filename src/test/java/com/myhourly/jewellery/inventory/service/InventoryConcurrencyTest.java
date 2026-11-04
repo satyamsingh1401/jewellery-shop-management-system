@@ -4,7 +4,7 @@ import com.myhourly.jewellery.inventory.dto.CreateInventoryRequest;
 import com.myhourly.jewellery.inventory.entity.MovementType;
 import com.myhourly.jewellery.inventory.event.OrderEvent;
 import com.myhourly.jewellery.inventory.event.OrderItemPayload;
-import com.myhourly.jewellery.inventory.exception.InsufficientStockException;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.inventory.repository.InventoryRepository;
 import com.myhourly.jewellery.inventory.repository.ProcessedEventRepository;
 import com.myhourly.jewellery.inventory.repository.StockMovementRepository;
@@ -154,7 +154,7 @@ class InventoryConcurrencyTest {
                             "evt-" + n, "OrderConfirmed", "ORD-" + n,
                             List.of(new OrderItemPayload(PRODUCT, 1))));
                     succeeded.incrementAndGet();
-                } catch (InsufficientStockException e) {
+                } catch (BusinessValidationException e) {
                     refused.incrementAndGet();
                 } catch (Throwable t) {
                     unexpected.add(t);

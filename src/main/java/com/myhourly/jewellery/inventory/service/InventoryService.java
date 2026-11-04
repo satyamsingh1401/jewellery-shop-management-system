@@ -8,9 +8,9 @@ import com.myhourly.jewellery.inventory.entity.StockMovement;
 import com.myhourly.jewellery.inventory.event.LowStockDetectedEvent;
 import com.myhourly.jewellery.inventory.event.OrderEvent;
 import com.myhourly.jewellery.inventory.event.OrderItemPayload;
-import com.myhourly.jewellery.inventory.exception.DuplicateInventoryException;
-import com.myhourly.jewellery.inventory.exception.InsufficientStockException;
-import com.myhourly.jewellery.inventory.exception.InventoryNotFoundException;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.DuplicateResourceException;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.inventory.repository.InventoryRepository;
 import com.myhourly.jewellery.inventory.repository.ProcessedEventRepository;
 import com.myhourly.jewellery.inventory.repository.StockMovementRepository;
@@ -64,7 +64,7 @@ public class InventoryService {
     public InventoryResponse createInventory(CreateInventoryRequest request, String user) {
         // TODO: ask the Product module whether productId exists (Satyam's module).
         if (inventoryRepository.existsByProductId(request.getProductId())) {
-            throw new DuplicateInventoryException(request.getProductId());
+            throw new DuplicateResourceException("Inventory already exists for product " + request.getProductId());
         }
         inventoryRepository.save(new Inventory(request.getProductId(), request.getInitialQuantity(), request.getReorderLevel()));
         if (request.getInitialQuantity() > 0) {
@@ -84,7 +84,7 @@ public class InventoryService {
     public InventoryResponse adjust(Long productId, AdjustStockRequest request, String user) {
         int change = request.getQuantityChange();
         if (change == 0) {
-            throw new IllegalArgumentException("quantityChange must not be zero");
+            throw new BusinessValidationException("quantityChange must not be zero");
         }
         if (change > 0) {
             addAndRecord(productId, change, MovementType.ADJUSTMENT, null, null, request.getReason(), user);
@@ -125,7 +125,7 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public boolean checkAvailability(Long productId, int quantity) {
         int available = inventoryRepository.findAvailableQuantity(productId)
-                .orElseThrow(() -> new InventoryNotFoundException(productId));
+                .orElseThrow(() -> notFound(productId));
         return available >= quantity;
     }
 
@@ -205,9 +205,10 @@ public class InventoryService {
                                  String refType, String refId, String reason, String user) {
         if (inventoryRepository.deductIfAvailable(productId, qty, LocalDateTime.now()) == 0) {
             if (!inventoryRepository.existsByProductId(productId)) {
-                throw new InventoryNotFoundException(productId);
+                throw notFound(productId);
             }
-            throw new InsufficientStockException(productId, qty);
+            throw new BusinessValidationException(
+                    "Insufficient stock for product " + productId + " (requested " + qty + ")");
         }
         int balance = currentQuantity(productId);
         record(productId, type, -qty, balance, refType, refId, reason, user);
@@ -217,7 +218,7 @@ public class InventoryService {
     private void addAndRecord(Long productId, int qty, MovementType type,
                               String refType, String refId, String reason, String user) {
         if (inventoryRepository.addQuantity(productId, qty, LocalDateTime.now()) == 0) {
-            throw new InventoryNotFoundException(productId);
+            throw notFound(productId);
         }
         record(productId, type, qty, currentQuantity(productId), refType, refId, reason, user);
     }
@@ -240,12 +241,16 @@ public class InventoryService {
 
     private int currentQuantity(Long productId) {
         return inventoryRepository.findAvailableQuantity(productId)
-                .orElseThrow(() -> new InventoryNotFoundException(productId));
+                .orElseThrow(() -> notFound(productId));
+    }
+
+    private ResourceNotFoundException notFound(Long productId) {
+        return new ResourceNotFoundException("No inventory record for product " + productId);
     }
 
     private Inventory findOrThrow(Long productId) {
         return inventoryRepository.findByProductId(productId)
-                .orElseThrow(() -> new InventoryNotFoundException(productId));
+                .orElseThrow(() -> notFound(productId));
     }
 
     /** Merges duplicate lines of the same product and validates every line. */

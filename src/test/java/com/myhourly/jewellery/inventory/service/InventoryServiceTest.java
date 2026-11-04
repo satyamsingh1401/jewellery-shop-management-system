@@ -5,7 +5,7 @@ import com.myhourly.jewellery.inventory.entity.Inventory;
 import com.myhourly.jewellery.inventory.event.LowStockDetectedEvent;
 import com.myhourly.jewellery.inventory.event.OrderEvent;
 import com.myhourly.jewellery.inventory.event.OrderItemPayload;
-import com.myhourly.jewellery.inventory.exception.InsufficientStockException;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.inventory.repository.InventoryRepository;
 import com.myhourly.jewellery.inventory.repository.ProcessedEventRepository;
 import com.myhourly.jewellery.inventory.repository.StockMovementRepository;
@@ -55,7 +55,7 @@ class InventoryServiceTest {
         when(inventoryRepository.deductIfAvailable(anyLong(), anyInt(), any(LocalDateTime.class))).thenReturn(0);
         when(inventoryRepository.existsByProductId(10L)).thenReturn(true);
 
-        assertThrows(InsufficientStockException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> service.processOrderEvent(confirmed("evt-2", 10L, 5)));
         verify(processedEventRepository, never()).save(any());
     }
@@ -86,7 +86,7 @@ class InventoryServiceTest {
 
     @Test
     void zeroAdjustmentIsRejected() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(BusinessValidationException.class,
                 () -> service.adjust(10L, new AdjustStockRequest(0, "oops"), "admin"));
     }
 }

@@ -1,7 +1,7 @@
 package com.myhourly.jewellery.inventory.config;
 
-import com.myhourly.jewellery.inventory.exception.InsufficientStockException;
-import com.myhourly.jewellery.inventory.exception.InventoryNotFoundException;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -34,8 +34,8 @@ public class InventoryKafkaConfig {
                 new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 3L));
         handler.addNotRetryableExceptions(
                 IllegalArgumentException.class,      // malformed event
-                InsufficientStockException.class,    // retrying will not create stock
-                InventoryNotFoundException.class);   // product has no inventory row
+                BusinessValidationException.class,   // for example not enough stock: retrying will not create stock
+                ResourceNotFoundException.class);    // product has no inventory row
         return handler;
     }
 }
