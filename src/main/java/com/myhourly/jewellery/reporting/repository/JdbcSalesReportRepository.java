@@ -38,6 +38,7 @@ public class JdbcSalesReportRepository implements SalesReportRepository {
                    SUM(CASE WHEN %8$s THEN 1 ELSE 0 END) AS cancelled_count
             FROM %9$s o
             WHERE %10$s
+              AND (%2$s OR %8$s)
             GROUP BY CAST(o.%1$s AS DATE)
             ORDER BY sale_date
             """.formatted(
