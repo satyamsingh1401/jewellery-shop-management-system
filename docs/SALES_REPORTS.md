@@ -22,7 +22,7 @@ Security: none yet. Once Module 10 lands, the spec's permissions table says repo
 | Sale | `orders.order_status` in `reporting.sale-order-statuses` (default `CONFIRMED,COMPLETED`). PENDING is ignored. | `application.properties` |
 | Cancelled | `order_status = reporting.cancelled-order-status` (default `CANCELLED`). Counted, never added to amounts. | `application.properties` |
 | Refund | A sale whose `payment_status = reporting.refunded-payment-status` (default `REFUNDED`). `netAmount = totalAmount − refundedAmount`. Excluded from product sales. | `application.properties` |
-| Day | `orders.created_at` in `[date 00:00, date+1 00:00)` | `ReportPeriod` |
+| Day | `orders.created_at` in `[date 00:00, date+1 00:00)`. `created_at` is a server-local `LocalDateTime`, so the server must run in the same zone as `reporting.zone`. | `ReportPeriod` |
 | Weight sold | `SUM(order_items.net_weight × quantity)`. Assumes `net_weight` is per unit. | `JdbcSalesReportRepository` |
 | Low stock | `available_quantity <= reorder_level`, same as the Inventory module | `StockLevel.isLowStock()` |
 | Rounding | Money 2 dp, weight 3 dp, HALF_UP | `ReportMapper` |
