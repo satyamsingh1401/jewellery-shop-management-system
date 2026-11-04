@@ -1,1 +1,0 @@
-ALTER TABLE invoices MODIFY invoice_number VARCHAR(40) NULL;
