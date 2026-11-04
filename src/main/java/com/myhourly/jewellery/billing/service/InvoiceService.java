@@ -1,5 +1,6 @@
 package com.myhourly.jewellery.billing.service;
 
+import org.springframework.transaction.annotation.Propagation;
 import com.myhourly.jewellery.common.exception.DuplicateResourceException;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
@@ -78,6 +79,21 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public List<InvoiceResponse> getByOrderId(Long orderId) {
         return repository.findByOrderId(orderId).stream().map(this::toResponse).toList();
+    }
+
+        @Transactional(readOnly = true)
+    public InvoiceResponse getActiveByOrderId(Long orderId) {
+        return toResponse(repository.findByOrderIdAndStatusNot(orderId, InvoiceStatus.CANCELLED)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No active invoice found for order " + orderId)));
+    }
+
+    // Locks the invoice row until the caller's transaction ends. MANDATORY makes it fail
+    // if the caller has no transaction, because the lock would be released immediately.
+    @Transactional(propagation = Propagation.MANDATORY)
+    public InvoiceResponse getByIdForUpdate(Long id) {
+        return toResponse(repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id " + id)));
     }
 
     @Transactional

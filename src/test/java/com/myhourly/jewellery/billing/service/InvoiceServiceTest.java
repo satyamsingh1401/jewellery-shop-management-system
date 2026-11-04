@@ -143,4 +143,44 @@ class InvoiceServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> service.getById(999L));
     }
+        private Invoice invoiceWithId(long id, long orderId, String number) {
+        BigDecimal zero = BigDecimal.ZERO;
+        Invoice invoice = new Invoice(number, 1L, orderId, zero, zero, zero, zero, zero);
+        ReflectionTestUtils.setField(invoice, "id", id);
+        return invoice;
+    }
+
+    @Test
+    void returnsTheActiveInvoiceForAnOrder() {
+        when(repository.findByOrderIdAndStatusNot(100L, InvoiceStatus.CANCELLED))
+                .thenReturn(Optional.of(invoiceWithId(10L, 100L, "INV-000010")));
+
+        InvoiceResponse response = service.getActiveByOrderId(100L);
+
+        assertEquals("INV-000010", response.invoiceNumber());
+        assertEquals(InvoiceStatus.GENERATED, response.status());
+    }
+
+    @Test
+    void throwsNotFoundWhenTheOrderHasNoActiveInvoice() {
+        when(repository.findByOrderIdAndStatusNot(100L, InvoiceStatus.CANCELLED))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getActiveByOrderId(100L));
+    }
+
+    @Test
+    void lockingReadReturnsTheInvoice() {
+        when(repository.findByIdForUpdate(5L))
+                .thenReturn(Optional.of(invoiceWithId(5L, 100L, "INV-000005")));
+
+        assertEquals("INV-000005", service.getByIdForUpdate(5L).invoiceNumber());
+    }
+
+    @Test
+    void lockingReadThrowsNotFoundForAnUnknownInvoice() {
+        when(repository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getByIdForUpdate(999L));
+    }
 }
