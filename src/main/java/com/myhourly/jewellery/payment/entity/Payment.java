@@ -28,7 +28,7 @@ public class Payment {
     @NotNull(message = "Payment amount is required")
     @DecimalMin(value = "0.01",
             message = "Payment amount must be at least 0.01")
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal amount;
 
     @NotNull(message = "Payment method is required")
@@ -44,7 +44,7 @@ public class Payment {
     @NotNull(message = "Refunded amount is required")
     @DecimalMin(value = "0.00",
             message = "Refunded amount cannot be negative")
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal refundedAmount = BigDecimal.ZERO;
 
     @NotBlank(message = "Currency is required")

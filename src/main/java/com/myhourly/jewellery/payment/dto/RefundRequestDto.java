@@ -14,8 +14,8 @@ public class RefundRequestDto {
             value = "0.01",
             message = "Refund amount must be at least 0.01"
     )
-    @Digits(integer = 10, fraction = 2,
-            message = "Refund amount allows at most 10 digits and 2 decimal places")
+    @Digits(integer = 12, fraction = 2,
+            message = "Refund amount allows at most 12 digits and 2 decimal places")
     private BigDecimal amount;
 
     @NotBlank(message = "Refund reason is required")

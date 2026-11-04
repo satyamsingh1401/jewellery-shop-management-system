@@ -17,8 +17,8 @@ public class PaymentRequestDto {
 
     @NotNull(message = "Payment amount is required")
     @DecimalMin(value = "0.01", message = "Payment amount must be at least 0.01")
-    @Digits(integer = 10, fraction = 2,
-            message = "Payment amount allows at most 10 digits and 2 decimal places")
+    @Digits(integer = 12, fraction = 2,
+            message = "Payment amount allows at most 12 digits and 2 decimal places")
     private BigDecimal amount;
 
     @NotNull(message = "Payment method is required")
