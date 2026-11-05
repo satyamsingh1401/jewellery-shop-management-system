@@ -11,9 +11,9 @@ import java.math.BigDecimal;
 
 public class PaymentRequestDto {
 
-    @NotNull(message = "Bill ID is required")
-    @Positive(message = "Bill ID must be greater than zero")
-    private Long billId;
+    @NotNull(message = "Order ID is required")
+    @Positive(message = "Order ID must be greater than zero")
+    private Long orderId;
 
     @NotNull(message = "Payment amount is required")
     @DecimalMin(value = "0.01", message = "Payment amount must be at least 0.01")
@@ -31,12 +31,12 @@ public class PaymentRequestDto {
     public PaymentRequestDto() {
     }
 
-    public Long getBillId() {
-        return billId;
+    public Long getOrderId() {
+        return orderId;
     }
 
-    public void setBillId(Long billId) {
-        this.billId = billId;
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
     }
 
     public BigDecimal getAmount() {

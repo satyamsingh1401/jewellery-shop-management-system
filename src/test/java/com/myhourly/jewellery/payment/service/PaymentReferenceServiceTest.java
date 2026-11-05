@@ -1,5 +1,8 @@
 package com.myhourly.jewellery.payment.service;
 
+import com.myhourly.jewellery.billing.dto.InvoiceResponse;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
+import com.myhourly.jewellery.billing.service.InvoiceService;
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
 import com.myhourly.jewellery.payment.entity.Payment;
 import com.myhourly.jewellery.payment.enums.PaymentMethod;
@@ -13,10 +16,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,11 +34,15 @@ class PaymentReferenceServiceTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private InvoiceService invoiceService;
+
     @InjectMocks
     private PaymentService paymentService;
 
     @Test
     void createPaymentShouldStoreTrimmedExternalReference() {
+        stubOpenInvoice();
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -49,6 +59,7 @@ class PaymentReferenceServiceTest {
 
     @Test
     void createPaymentShouldTreatBlankReferenceAsNoReference() {
+        stubOpenInvoice();
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -65,6 +76,7 @@ class PaymentReferenceServiceTest {
 
     @Test
     void createPaymentShouldAllowMissingReference() {
+        stubOpenInvoice();
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -74,9 +86,23 @@ class PaymentReferenceServiceTest {
         assertNull(response.getExternalReference());
     }
 
+    // Order 7 has one GENERATED invoice (id 70) with nothing paid yet.
+    private void stubOpenInvoice() {
+        InvoiceResponse invoice = new InvoiceResponse(
+                70L, "INV-000070", 1L, 7L, InvoiceStatus.GENERATED, null,
+                List.of(), null, null, null, null, new BigDecimal("5000.00"));
+
+        when(invoiceService.getActiveByOrderId(7L)).thenReturn(invoice);
+        when(invoiceService.getByIdForUpdate(70L)).thenReturn(invoice);
+        when(paymentRepository.sumAmountsByInvoiceIdAndStatusIn(
+                eq(70L), anyList())).thenReturn(BigDecimal.ZERO);
+        when(paymentRepository.sumRefundedAmountsByInvoiceIdAndStatusIn(
+                eq(70L), anyList())).thenReturn(BigDecimal.ZERO);
+    }
+
     private PaymentRequestDto requestWithReference(String reference) {
         PaymentRequestDto request = new PaymentRequestDto();
-        request.setBillId(7L);
+        request.setOrderId(7L);
         request.setAmount(new BigDecimal("1500.00"));
         request.setPaymentMethod(PaymentMethod.UPI);
         request.setExternalReference(reference);

@@ -16,7 +16,7 @@ public final class PaymentMapper {
         PaymentResponseDto dto = new PaymentResponseDto();
 
         dto.setId(payment.getId());
-        dto.setBillId(payment.getBillId());
+        dto.setInvoiceId(payment.getInvoiceId());
         dto.setAmount(payment.getAmount());
         dto.setPaymentMethod(payment.getPaymentMethod());
         dto.setStatus(payment.getStatus());

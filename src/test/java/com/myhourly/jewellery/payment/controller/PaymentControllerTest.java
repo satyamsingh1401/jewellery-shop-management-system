@@ -73,7 +73,7 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
-                    "billId": 1,
+                    "orderId": 1,
                     "amount": 0,
                     "paymentMethod": "UPI"
                 }
@@ -92,7 +92,7 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
-                    "billId": 1,
+                    "orderId": 1,
                     "paymentMethod": "UPI"
                 }
                 """;
@@ -119,7 +119,7 @@ class PaymentControllerTest {
 
         String requestJson = """
                 {
-                    "billId": 1,
+                    "orderId": 1,
                     "amount": 1500,
                     "paymentMethod": "UPI"
                 }
@@ -140,7 +140,7 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
-                    "billId": 1,
+                    "orderId": 1,
                     "amount": 1500,
                     "paymentMethod": "INVALID"
                 }
@@ -169,7 +169,7 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
-                    "billId": 1,
+                    "orderId": 1,
                     "amount": 500,
                     "paymentMethod":
                 }
@@ -193,7 +193,7 @@ class PaymentControllerTest {
             throws Exception {
         String requestJson = """
                 {
-                    "billId": 1,
+                    "orderId": 1,
                     "amount": 500
                 }
                 """;
@@ -213,7 +213,7 @@ class PaymentControllerTest {
     }
 
     @Test
-    void createPaymentWithMissingBillIdShouldReturnValidationError()
+    void createPaymentWithMissingOrderIdShouldReturnValidationError()
             throws Exception {
         String requestJson = """
                 {
@@ -230,16 +230,16 @@ class PaymentControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("Request validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.billId")
-                        .value("Bill ID is required"));
+                .andExpect(jsonPath("$.fieldErrors.orderId")
+                        .value("Order ID is required"));
     }
 
     @Test
-    void createPaymentWithInvalidBillIdShouldReturnBadRequest()
+    void createPaymentWithInvalidOrderIdShouldReturnBadRequest()
             throws Exception {
         String requestJson = """
                 {
-                    "billId": 0,
+                    "orderId": 0,
                     "amount": 500,
                     "paymentMethod": "UPI"
                 }
@@ -270,31 +270,31 @@ class PaymentControllerTest {
     }
 
     // ---------------------------------------------------------------
-    // payments for a bill
+    // payments for an invoice
     // ---------------------------------------------------------------
 
     @Test
-    void getPaymentsForBillShouldReturnPayments() throws Exception {
+    void getPaymentsForInvoiceShouldReturnPayments() throws Exception {
         PaymentResponseDto response = new PaymentResponseDto();
         response.setId(3L);
-        response.setBillId(7L);
+        response.setInvoiceId(7L);
         response.setStatus(PaymentStatus.COMPLETED);
 
-        when(paymentService.getPaymentsForBill(7L))
+        when(paymentService.getPaymentsForInvoice(7L))
                 .thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/payments/bill/7")
+        mockMvc.perform(get("/api/payments/invoice/7")
                 .with(user("user")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].id").value(3))
-                .andExpect(jsonPath("$[0].billId").value(7));
+                .andExpect(jsonPath("$[0].invoiceId").value(7));
     }
 
     @Test
-    void getPaymentsForBillWithoutAuthenticationShouldReturnUnauthorized()
+    void getPaymentsForInvoiceWithoutAuthenticationShouldReturnUnauthorized()
             throws Exception {
-        mockMvc.perform(get("/api/payments/bill/7"))
+        mockMvc.perform(get("/api/payments/invoice/7"))
                 .andExpect(status().isUnauthorized());
     }
 

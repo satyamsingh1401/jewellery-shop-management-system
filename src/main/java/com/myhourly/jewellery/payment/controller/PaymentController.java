@@ -46,10 +46,10 @@ public class PaymentController {
         return paymentService.getPaymentById(id);
     }
 
-    @GetMapping("/bill/{billId}")
-    public List<PaymentResponseDto> getPaymentsForBill(
-            @PathVariable Long billId) {
-        return paymentService.getPaymentsForBill(billId);
+    @GetMapping("/invoice/{invoiceId}")
+    public List<PaymentResponseDto> getPaymentsForInvoice(
+            @PathVariable Long invoiceId) {
+        return paymentService.getPaymentsForInvoice(invoiceId);
     }
 
     @PostMapping("/{paymentId}/confirm")

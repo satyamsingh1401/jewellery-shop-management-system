@@ -1,5 +1,8 @@
 package com.myhourly.jewellery.payment.service;
 
+import com.myhourly.jewellery.billing.dto.InvoiceResponse;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
+import com.myhourly.jewellery.billing.service.InvoiceService;
 import com.myhourly.jewellery.payment.entity.Payment;
 import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
@@ -21,15 +24,22 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
     private static final String STAFF = "staff1";
+    private static final Long ORDER_ID = 7L;
+    private static final Long INVOICE_ID = 70L;
 
     @Mock
     private PaymentRepository paymentRepository;
+
+    @Mock
+    private InvoiceService invoiceService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -41,6 +51,7 @@ class PaymentServiceTest {
     @Test
     void createPaymentShouldSavePendingPayment() {
         PaymentRequestDto request = validRequest();
+        stubInvoice(InvoiceStatus.GENERATED, "5000.00", "0", "0");
 
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -56,8 +67,9 @@ class PaymentServiceTest {
     }
 
     @Test
-    void createPaymentShouldStoreCreatedByAndBillId() {
+    void createPaymentShouldStoreCreatedByAndInvoiceId() {
         PaymentRequestDto request = validRequest();
+        stubInvoice(InvoiceStatus.GENERATED, "5000.00", "0", "0");
 
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -69,9 +81,9 @@ class PaymentServiceTest {
         verify(paymentRepository).save(captor.capture());
 
         assertEquals("staff1", captor.getValue().getCreatedBy());
-        assertEquals(7L, captor.getValue().getBillId());
+        assertEquals(INVOICE_ID, captor.getValue().getInvoiceId());
         assertEquals("staff1", response.getCreatedBy());
-        assertEquals(7L, response.getBillId());
+        assertEquals(INVOICE_ID, response.getInvoiceId());
     }
 
     @Test
@@ -138,6 +150,7 @@ class PaymentServiceTest {
     void createPaymentShouldAcceptMinimumAmount() {
         PaymentRequestDto request = validRequest();
         request.setAmount(new BigDecimal("0.01"));
+        stubInvoice(InvoiceStatus.GENERATED, "5000.00", "0", "0");
 
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -157,6 +170,61 @@ class PaymentServiceTest {
                 () -> paymentService.createPayment(request, STAFF));
 
         verifyNoInteractions(paymentRepository);
+    }
+
+    @Test
+    void createPaymentShouldFailWhenOrderHasNoActiveInvoice() {
+        when(invoiceService.getActiveByOrderId(ORDER_ID))
+                .thenThrow(new ResourceNotFoundException(
+                        "No active invoice found for order " + ORDER_ID));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> paymentService.createPayment(validRequest(), STAFF));
+
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void createPaymentShouldRejectInvoiceThatIsNotGenerated() {
+        for (InvoiceStatus status : new InvoiceStatus[] {
+                InvoiceStatus.PAID, InvoiceStatus.CANCELLED }) {
+
+            stubInvoice(status, "5000.00", null, null);
+
+            assertThrows(BusinessValidationException.class,
+                    () -> paymentService.createPayment(
+                            validRequest(), STAFF));
+        }
+
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void createPaymentShouldRejectAmountAboveOutstandingBalance() {
+        // 5000 total, 4000 already paid or pending, 500 of it refunded
+        // -> only 1500 is still outstanding.
+        stubInvoice(InvoiceStatus.GENERATED, "5000.00", "4000", "500");
+
+        PaymentRequestDto request = validRequest();
+        request.setAmount(new BigDecimal("1500.01"));
+
+        assertThrows(BusinessValidationException.class,
+                () -> paymentService.createPayment(request, STAFF));
+
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void createPaymentShouldAcceptAmountEqualToOutstandingBalance() {
+        stubInvoice(InvoiceStatus.GENERATED, "5000.00", "4000", "500");
+
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = paymentService.createPayment(validRequest(), STAFF);
+
+        assertEquals(new BigDecimal("1500.00"), response.getAmount());
+        verify(paymentRepository).save(any(Payment.class));
     }
 
     // ---------------------------------------------------------------
@@ -185,46 +253,46 @@ class PaymentServiceTest {
     }
 
     // ---------------------------------------------------------------
-    // getPaymentsForBill
+    // getPaymentsForInvoice
     // ---------------------------------------------------------------
 
     @Test
-    void getPaymentsForBillShouldReturnMatchingPayments() {
+    void getPaymentsForInvoiceShouldReturnMatchingPayments() {
         Payment first = createPayment(PaymentStatus.COMPLETED);
-        first.setBillId(7L);
+        first.setInvoiceId(7L);
         Payment second = createPayment(PaymentStatus.PENDING);
-        second.setBillId(7L);
+        second.setInvoiceId(7L);
 
-        when(paymentRepository.findByBillIdOrderByCreatedAtDesc(7L))
+        when(paymentRepository.findByInvoiceIdOrderByCreatedAtDesc(7L))
                 .thenReturn(List.of(first, second));
 
-        var results = paymentService.getPaymentsForBill(7L);
+        var results = paymentService.getPaymentsForInvoice(7L);
 
         assertEquals(2, results.size());
-        assertTrue(results.stream().allMatch(r -> r.getBillId() == 7L));
+        assertTrue(results.stream().allMatch(r -> r.getInvoiceId() == 7L));
         assertEquals(PaymentStatus.COMPLETED, results.get(0).getStatus());
     }
 
     @Test
-    void getPaymentsForBillShouldReturnEmptyListWhenNoPayments() {
-        when(paymentRepository.findByBillIdOrderByCreatedAtDesc(8L))
+    void getPaymentsForInvoiceShouldReturnEmptyListWhenNoPayments() {
+        when(paymentRepository.findByInvoiceIdOrderByCreatedAtDesc(8L))
                 .thenReturn(List.of());
 
-        var results = paymentService.getPaymentsForBill(8L);
+        var results = paymentService.getPaymentsForInvoice(8L);
 
         assertTrue(results.isEmpty());
     }
 
     @Test
-    void getPaymentsForBillShouldRejectInvalidBillId() {
+    void getPaymentsForInvoiceShouldRejectInvalidInvoiceId() {
         assertThrows(BusinessValidationException.class,
-                () -> paymentService.getPaymentsForBill(null));
+                () -> paymentService.getPaymentsForInvoice(null));
 
         assertThrows(BusinessValidationException.class,
-                () -> paymentService.getPaymentsForBill(0L));
+                () -> paymentService.getPaymentsForInvoice(0L));
 
         assertThrows(BusinessValidationException.class,
-                () -> paymentService.getPaymentsForBill(-1L));
+                () -> paymentService.getPaymentsForInvoice(-1L));
 
         verifyNoInteractions(paymentRepository);
     }
@@ -241,12 +309,48 @@ class PaymentServiceTest {
                 .thenReturn(Optional.of(payment));
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        // 1500 received so far, invoice total 5000: stays GENERATED.
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "0");
 
         var response = paymentService.confirmPayment(10L);
 
         assertEquals(PaymentStatus.COMPLETED, response.getStatus());
         assertNotNull(response.getPaymentDate());
         verify(paymentRepository).save(payment);
+        verify(invoiceService, never())
+                .updateStatus(any(Long.class), any(InvoiceStatus.class));
+    }
+
+    @Test
+    void confirmPaymentShouldMarkInvoicePaidWhenTotalIsReached() {
+        Payment payment = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubLockedInvoice(InvoiceStatus.GENERATED, "1500.00", "1500", "0");
+
+        paymentService.confirmPayment(10L);
+
+        verify(invoiceService).updateStatus(INVOICE_ID, InvoiceStatus.PAID);
+    }
+
+    @Test
+    void confirmPaymentShouldRejectWhenInvoiceIsNoLongerGenerated() {
+        Payment payment = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        stubLockedInvoice(InvoiceStatus.CANCELLED, "1500.00", null, null);
+
+        assertThrows(BusinessValidationException.class,
+                () -> paymentService.confirmPayment(10L));
+
+        assertEquals(PaymentStatus.PENDING, payment.getStatus());
+        verify(paymentRepository, never()).save(any(Payment.class));
+        verify(invoiceService, never())
+                .updateStatus(any(Long.class), any(InvoiceStatus.class));
     }
 
     @Test
@@ -466,6 +570,7 @@ class PaymentServiceTest {
 
     @Test
     void partialRefundShouldSetPartiallyRefundedStatus() {
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
         Payment payment = createPayment(PaymentStatus.COMPLETED);
 
         when(paymentRepository.findByIdForUpdate(10L))
@@ -485,6 +590,7 @@ class PaymentServiceTest {
 
     @Test
     void fullRefundShouldSetRefundedStatus() {
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
         Payment payment = createPayment(PaymentStatus.COMPLETED);
 
         when(paymentRepository.findByIdForUpdate(10L))
@@ -502,7 +608,42 @@ class PaymentServiceTest {
     }
 
     @Test
+    void refundShouldMoveInvoiceBackToGeneratedWhenItDropsBelowTotal() {
+        Payment payment = createPayment(PaymentStatus.COMPLETED);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        // Invoice is PAID (total 1500); after the refund only 1000 is left.
+        stubLockedInvoice(InvoiceStatus.PAID, "1500.00", "1500", "500");
+
+        paymentService.recordRefund(
+                10L, new BigDecimal("500"), "Partial refund");
+
+        verify(invoiceService).markUnpaid(INVOICE_ID);
+    }
+
+    @Test
+    void refundShouldKeepInvoicePaidWhenTotalIsStillCovered() {
+        Payment payment = createPayment(PaymentStatus.COMPLETED);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        // Invoice total is 1000 and 1000 is still received after the refund.
+        stubLockedInvoice(InvoiceStatus.PAID, "1000.00", "1500", "500");
+
+        paymentService.recordRefund(
+                10L, new BigDecimal("500"), "Partial refund");
+
+        verify(invoiceService, never()).markUnpaid(any(Long.class));
+    }
+
+    @Test
     void repeatedRefundShouldAllowRemainingRefundableAmount() {
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
         Payment payment = createPayment(PaymentStatus.PARTIALLY_REFUNDED);
         payment.setRefundedAmount(new BigDecimal("500"));
 
@@ -520,6 +661,7 @@ class PaymentServiceTest {
 
     @Test
     void repeatedPartialRefundShouldStayPartiallyRefunded() {
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
         Payment payment = createPayment(PaymentStatus.PARTIALLY_REFUNDED);
         payment.setRefundedAmount(new BigDecimal("500"));
 
@@ -537,6 +679,7 @@ class PaymentServiceTest {
 
     @Test
     void repeatedRefundShouldKeepEarlierReasons() {
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
         Payment payment = createPayment(PaymentStatus.PARTIALLY_REFUNDED);
         payment.setRefundedAmount(new BigDecimal("500"));
         payment.setRefundReason("First reason");
@@ -619,9 +762,46 @@ class PaymentServiceTest {
         verify(paymentRepository, never()).save(any(Payment.class));
     }
 
+    // Invoice of order 7, found and locked by the service. The two repository
+    // numbers are what the service sums up for that invoice.
+    private void stubInvoice(InvoiceStatus status, String grandTotal,
+                             String paid, String refunded) {
+        InvoiceResponse invoice = invoice(status, grandTotal);
+
+        when(invoiceService.getActiveByOrderId(ORDER_ID)).thenReturn(invoice);
+        when(invoiceService.getByIdForUpdate(INVOICE_ID)).thenReturn(invoice);
+        stubSums(paid, refunded);
+    }
+
+    // For confirm and refund: the invoice is only locked by id.
+    private void stubLockedInvoice(InvoiceStatus status, String grandTotal,
+                                   String paid, String refunded) {
+        when(invoiceService.getByIdForUpdate(INVOICE_ID))
+                .thenReturn(invoice(status, grandTotal));
+        stubSums(paid, refunded);
+    }
+
+    private void stubSums(String paid, String refunded) {
+        if (paid == null) {
+            return;
+        }
+        when(paymentRepository.sumAmountsByInvoiceIdAndStatusIn(
+                eq(INVOICE_ID), anyList()))
+                .thenReturn(new BigDecimal(paid));
+        when(paymentRepository.sumRefundedAmountsByInvoiceIdAndStatusIn(
+                eq(INVOICE_ID), anyList()))
+                .thenReturn(new BigDecimal(refunded));
+    }
+
+    private InvoiceResponse invoice(InvoiceStatus status, String grandTotal) {
+        return new InvoiceResponse(INVOICE_ID, "INV-000070", 1L, ORDER_ID,
+                status, null, List.of(), null, null, null, null,
+                new BigDecimal(grandTotal));
+    }
+
     private PaymentRequestDto validRequest() {
         PaymentRequestDto request = new PaymentRequestDto();
-        request.setBillId(7L);
+        request.setOrderId(ORDER_ID);
         request.setAmount(new BigDecimal("1500.00"));
         request.setPaymentMethod(PaymentMethod.UPI);
         return request;
@@ -629,6 +809,7 @@ class PaymentServiceTest {
 
     private Payment createPayment(PaymentStatus status) {
         Payment payment = new Payment();
+        payment.setInvoiceId(INVOICE_ID);
         payment.setAmount(new BigDecimal("1500"));
         payment.setStatus(status);
         payment.setRefundedAmount(BigDecimal.ZERO);

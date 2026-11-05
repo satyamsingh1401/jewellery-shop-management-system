@@ -21,8 +21,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("SELECT p FROM Payment p WHERE p.id = :id")
     Optional<Payment> findByIdForUpdate(@Param("id") Long id);
 
-    // Retrieve all payments recorded against one bill, newest first
-    List<Payment> findByBillIdOrderByCreatedAtDesc(Long billId);
+    // Retrieve all payments recorded against one invoice, newest first
+    List<Payment> findByInvoiceIdOrderByCreatedAtDesc(Long invoiceId);
+
+    // True if the invoice has at least one payment in the given statuses
+    boolean existsByInvoiceIdAndStatusIn(
+            Long invoiceId, List<PaymentStatus> statuses);
 
     // Retrieve payments by status, newest first
     List<Payment> findByStatusOrderByCreatedAtDesc(PaymentStatus status);
@@ -48,26 +52,26 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     BigDecimal sumRefundedAmountsByStatus(
             @Param("status") PaymentStatus status);
 
-    // Total recorded amount of one bill's payments in the given statuses
+    // Total recorded amount of one invoice's payments in the given statuses
     // (pass the "successful" statuses to exclude pending/failed/cancelled)
     @Query("""
         SELECT COALESCE(SUM(p.amount), 0)
         FROM Payment p
-        WHERE p.billId = :billId
+        WHERE p.invoiceId = :invoiceId
           AND p.status IN :statuses
         """)
-    BigDecimal sumAmountsByBillIdAndStatusIn(
-            @Param("billId") Long billId,
+    BigDecimal sumAmountsByInvoiceIdAndStatusIn(
+            @Param("invoiceId") Long invoiceId,
             @Param("statuses") List<PaymentStatus> statuses);
 
-    // Total refunded amount of one bill's payments in the given statuses
+    // Total refunded amount of one invoice's payments in the given statuses
     @Query("""
         SELECT COALESCE(SUM(p.refundedAmount), 0)
         FROM Payment p
-        WHERE p.billId = :billId
+        WHERE p.invoiceId = :invoiceId
           AND p.status IN :statuses
         """)
-    BigDecimal sumRefundedAmountsByBillIdAndStatusIn(
-            @Param("billId") Long billId,
+    BigDecimal sumRefundedAmountsByInvoiceIdAndStatusIn(
+            @Param("invoiceId") Long invoiceId,
             @Param("statuses") List<PaymentStatus> statuses);
 }

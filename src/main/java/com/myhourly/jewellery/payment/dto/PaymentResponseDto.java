@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 public class PaymentResponseDto {
 
     private Long id;
-    private Long billId;
+    private Long invoiceId;
     private BigDecimal amount;
     private PaymentMethod paymentMethod;
     private PaymentStatus status;
@@ -33,12 +33,12 @@ public class PaymentResponseDto {
         this.id = id;
     }
 
-    public Long getBillId() {
-        return billId;
+    public Long getInvoiceId() {
+        return invoiceId;
     }
 
-    public void setBillId(Long billId) {
-        this.billId = billId;
+    public void setInvoiceId(Long invoiceId) {
+        this.invoiceId = invoiceId;
     }
 
     public BigDecimal getAmount() {

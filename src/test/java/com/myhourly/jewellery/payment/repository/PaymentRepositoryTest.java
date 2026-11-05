@@ -13,14 +13,16 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @Transactional
 class PaymentRepositoryTest {
 
-    private static final Long TEST_BILL_ID = 900000001L;
-    private static final Long OTHER_BILL_ID = 900000002L;
+    private static final Long TEST_INVOICE_ID = 900000001L;
+    private static final Long OTHER_INVOICE_ID = 900000002L;
+    private static final Long DEFAULT_INVOICE_ID = 900000099L;
 
     private static final List<PaymentStatus> SUCCESSFUL_STATUSES = List.of(
             PaymentStatus.COMPLETED,
@@ -141,59 +143,59 @@ class PaymentRepositoryTest {
     }
 
     // ---------------------------------------------------------------
-    // Bill-wise queries
+    // Invoice-wise queries
     // ---------------------------------------------------------------
 
     @Test
-    void findByBillIdShouldReturnOnlyThatBillsPayments() {
+    void findByInvoiceIdShouldReturnOnlyThatInvoicesPayments() {
         int baseline = paymentRepository
-                .findByBillIdOrderByCreatedAtDesc(TEST_BILL_ID).size();
+                .findByInvoiceIdOrderByCreatedAtDesc(TEST_INVOICE_ID).size();
 
         paymentRepository.save(createPayment(
-                "1000", PaymentStatus.COMPLETED, TEST_BILL_ID));
+                "1000", PaymentStatus.COMPLETED, TEST_INVOICE_ID));
         paymentRepository.save(createPayment(
-                "2000", PaymentStatus.PENDING, TEST_BILL_ID));
+                "2000", PaymentStatus.PENDING, TEST_INVOICE_ID));
         paymentRepository.save(createPayment(
-                "3000", PaymentStatus.COMPLETED, OTHER_BILL_ID));
+                "3000", PaymentStatus.COMPLETED, OTHER_INVOICE_ID));
         paymentRepository.flush();
 
         var results = paymentRepository
-                .findByBillIdOrderByCreatedAtDesc(TEST_BILL_ID);
+                .findByInvoiceIdOrderByCreatedAtDesc(TEST_INVOICE_ID);
 
         assertEquals(baseline + 2, results.size());
         assertTrue(results.stream()
-                .allMatch(p -> TEST_BILL_ID.equals(p.getBillId())));
+                .allMatch(p -> TEST_INVOICE_ID.equals(p.getInvoiceId())));
     }
 
     @Test
-    void findByBillIdShouldReturnEmptyForBillWithoutPayments() {
+    void findByInvoiceIdShouldReturnEmptyForInvoiceWithoutPayments() {
         var results = paymentRepository
-                .findByBillIdOrderByCreatedAtDesc(Long.MAX_VALUE);
+                .findByInvoiceIdOrderByCreatedAtDesc(Long.MAX_VALUE);
 
         assertTrue(results.isEmpty());
     }
 
     @Test
-    void sumAmountsByBillIdShouldCountOnlySuccessfulStatusesOfThatBill() {
+    void sumAmountsByInvoiceIdShouldCountOnlySuccessfulStatusesOfThatInvoice() {
         BigDecimal baseline = paymentRepository
-                .sumAmountsByBillIdAndStatusIn(
-                        TEST_BILL_ID, SUCCESSFUL_STATUSES);
+                .sumAmountsByInvoiceIdAndStatusIn(
+                        TEST_INVOICE_ID, SUCCESSFUL_STATUSES);
 
         paymentRepository.save(createPayment(
-                "1000", PaymentStatus.COMPLETED, TEST_BILL_ID));
+                "1000", PaymentStatus.COMPLETED, TEST_INVOICE_ID));
         paymentRepository.save(createPayment(
-                "500", PaymentStatus.PARTIALLY_REFUNDED, TEST_BILL_ID));
+                "500", PaymentStatus.PARTIALLY_REFUNDED, TEST_INVOICE_ID));
         paymentRepository.save(createPayment(
-                "700", PaymentStatus.PENDING, TEST_BILL_ID));
+                "700", PaymentStatus.PENDING, TEST_INVOICE_ID));
         paymentRepository.save(createPayment(
-                "800", PaymentStatus.FAILED, TEST_BILL_ID));
+                "800", PaymentStatus.FAILED, TEST_INVOICE_ID));
         paymentRepository.save(createPayment(
-                "9000", PaymentStatus.COMPLETED, OTHER_BILL_ID));
+                "9000", PaymentStatus.COMPLETED, OTHER_INVOICE_ID));
         paymentRepository.flush();
 
         BigDecimal total = paymentRepository
-                .sumAmountsByBillIdAndStatusIn(
-                        TEST_BILL_ID, SUCCESSFUL_STATUSES);
+                .sumAmountsByInvoiceIdAndStatusIn(
+                        TEST_INVOICE_ID, SUCCESSFUL_STATUSES);
 
         assertEquals(
                 0,
@@ -201,44 +203,73 @@ class PaymentRepositoryTest {
     }
 
     @Test
-    void sumAmountsByBillIdShouldReturnZeroForBillWithoutPayments() {
+    void sumAmountsByInvoiceIdShouldReturnZeroForInvoiceWithoutPayments() {
         BigDecimal total = paymentRepository
-                .sumAmountsByBillIdAndStatusIn(
+                .sumAmountsByInvoiceIdAndStatusIn(
                         Long.MAX_VALUE, SUCCESSFUL_STATUSES);
 
         assertEquals(0, BigDecimal.ZERO.compareTo(total));
     }
 
     @Test
-    void sumRefundedAmountsByBillIdShouldCountOnlyThatBillsRefunds() {
+    void sumRefundedAmountsByInvoiceIdShouldCountOnlyThatInvoicesRefunds() {
         BigDecimal baseline = paymentRepository
-                .sumRefundedAmountsByBillIdAndStatusIn(
-                        TEST_BILL_ID, SUCCESSFUL_STATUSES);
+                .sumRefundedAmountsByInvoiceIdAndStatusIn(
+                        TEST_INVOICE_ID, SUCCESSFUL_STATUSES);
 
         Payment partial = createPayment(
-                "1000", PaymentStatus.PARTIALLY_REFUNDED, TEST_BILL_ID);
+                "1000", PaymentStatus.PARTIALLY_REFUNDED, TEST_INVOICE_ID);
         partial.setRefundedAmount(new BigDecimal("300"));
 
         Payment full = createPayment(
-                "400", PaymentStatus.REFUNDED, TEST_BILL_ID);
+                "400", PaymentStatus.REFUNDED, TEST_INVOICE_ID);
         full.setRefundedAmount(new BigDecimal("400"));
 
-        Payment otherBill = createPayment(
-                "600", PaymentStatus.REFUNDED, OTHER_BILL_ID);
-        otherBill.setRefundedAmount(new BigDecimal("600"));
+        Payment otherInvoice = createPayment(
+                "600", PaymentStatus.REFUNDED, OTHER_INVOICE_ID);
+        otherInvoice.setRefundedAmount(new BigDecimal("600"));
 
         paymentRepository.save(partial);
         paymentRepository.save(full);
-        paymentRepository.save(otherBill);
+        paymentRepository.save(otherInvoice);
         paymentRepository.flush();
 
         BigDecimal total = paymentRepository
-                .sumRefundedAmountsByBillIdAndStatusIn(
-                        TEST_BILL_ID, SUCCESSFUL_STATUSES);
+                .sumRefundedAmountsByInvoiceIdAndStatusIn(
+                        TEST_INVOICE_ID, SUCCESSFUL_STATUSES);
 
         assertEquals(
                 0,
                 baseline.add(new BigDecimal("700")).compareTo(total));
+    }
+
+    @Test
+    void existsByInvoiceIdAndStatusInShouldFindOnlyMatchingStatuses() {
+        paymentRepository.save(createPayment(
+                "1000", PaymentStatus.FAILED, TEST_INVOICE_ID));
+        paymentRepository.flush();
+
+        assertFalse(paymentRepository.existsByInvoiceIdAndStatusIn(
+                TEST_INVOICE_ID,
+                List.of(PaymentStatus.PENDING, PaymentStatus.COMPLETED)));
+
+        paymentRepository.save(createPayment(
+                "1000", PaymentStatus.COMPLETED, TEST_INVOICE_ID));
+        paymentRepository.flush();
+
+        assertTrue(paymentRepository.existsByInvoiceIdAndStatusIn(
+                TEST_INVOICE_ID,
+                List.of(PaymentStatus.PENDING, PaymentStatus.COMPLETED)));
+    }
+
+    @Test
+    void existsByInvoiceIdAndStatusInShouldIgnoreOtherInvoices() {
+        paymentRepository.save(createPayment(
+                "1000", PaymentStatus.COMPLETED, OTHER_INVOICE_ID));
+        paymentRepository.flush();
+
+        assertFalse(paymentRepository.existsByInvoiceIdAndStatusIn(
+                TEST_INVOICE_ID, List.of(PaymentStatus.COMPLETED)));
     }
 
     private Payment createPayment(String amount, PaymentStatus status) {
@@ -247,14 +278,15 @@ class PaymentRepositoryTest {
         payment.setPaymentMethod(PaymentMethod.UPI);
         payment.setStatus(status);
         payment.setRefundedAmount(BigDecimal.ZERO);
+        payment.setInvoiceId(DEFAULT_INVOICE_ID);
         return payment;
     }
 
     private Payment createPayment(
-            String amount, PaymentStatus status, Long billId) {
+            String amount, PaymentStatus status, Long invoiceId) {
 
         Payment payment = createPayment(amount, status);
-        payment.setBillId(billId);
+        payment.setInvoiceId(invoiceId);
         return payment;
     }
 }

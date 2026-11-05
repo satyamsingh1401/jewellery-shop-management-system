@@ -13,17 +13,18 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", indexes = @Index(
+        name = "idx_payments_invoice_id", columnList = "invoice_id"))
 public class Payment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Placeholder until the Billing module is integrated (Phase 7),
-    // when this becomes a relationship to the actual Bill entity.
-    @Column(name = "bill_id")
-    private Long billId;
+    // The invoice this payment is for (Billing module). Kept as a plain id,
+    // no foreign key, so the modules stay independent.
+    @Column(name = "invoice_id", nullable = false)
+    private Long invoiceId;
 
     @NotNull(message = "Payment amount is required")
     @DecimalMin(value = "0.01",
@@ -152,12 +153,12 @@ public class Payment {
         this.id = id;
     }
 
-    public Long getBillId() {
-        return billId;
+    public Long getInvoiceId() {
+        return invoiceId;
     }
 
-    public void setBillId(Long billId) {
-        this.billId = billId;
+    public void setInvoiceId(Long invoiceId) {
+        this.invoiceId = invoiceId;
     }
 
     public BigDecimal getAmount() {

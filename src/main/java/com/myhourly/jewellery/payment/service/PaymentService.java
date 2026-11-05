@@ -1,5 +1,8 @@
 package com.myhourly.jewellery.payment.service;
 
+import com.myhourly.jewellery.billing.dto.InvoiceResponse;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
+import com.myhourly.jewellery.billing.service.InvoiceService;
 import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.payment.entity.Payment;
@@ -22,10 +25,25 @@ public class PaymentService {
     private static final BigDecimal MIN_AMOUNT = new BigDecimal("0.01");
     private static final int MAX_REASON_LENGTH = 500;
 
-    private final PaymentRepository paymentRepository;
+    // Payments that already use up part of the invoice total (pending ones
+    // are counted too, so two clients cannot pay the same rupee twice).
+    private static final List<PaymentStatus> RESERVED_STATUSES = List.of(
+            PaymentStatus.PENDING,
+            PaymentStatus.COMPLETED,
+            PaymentStatus.PARTIALLY_REFUNDED);
 
-    public PaymentService(PaymentRepository paymentRepository) {
+    // Payments whose money has really been received (minus refunds).
+    private static final List<PaymentStatus> SUCCESSFUL_STATUSES = List.of(
+            PaymentStatus.COMPLETED,
+            PaymentStatus.PARTIALLY_REFUNDED);
+
+    private final PaymentRepository paymentRepository;
+    private final InvoiceService invoiceService;
+
+    public PaymentService(PaymentRepository paymentRepository,
+                          InvoiceService invoiceService) {
         this.paymentRepository = paymentRepository;
+        this.invoiceService = invoiceService;
     }
 
     @Transactional
@@ -43,7 +61,7 @@ public class PaymentService {
                     "The payment recorder must be identified");
         }
 
-        validateBillId(request.getBillId());
+        validateOrderId(request.getOrderId());
         validateAmount(request.getAmount(), "Payment amount");
 
         if (request.getPaymentMethod() == null) {
@@ -51,8 +69,24 @@ public class PaymentService {
                     "Payment method is required");
         }
 
+        // Find the order's active invoice and lock it until this
+        // transaction ends, so parallel payments cannot overpay it.
+        InvoiceResponse invoice = invoiceService.getByIdForUpdate(
+                invoiceService.getActiveByOrderId(request.getOrderId()).id());
+
+        requireGenerated(invoice);
+
+        BigDecimal outstanding = invoice.grandTotal().subtract(
+                netAmount(invoice.id(), RESERVED_STATUSES));
+
+        if (request.getAmount().compareTo(outstanding) > 0) {
+            throw new BusinessValidationException(
+                    "Payment exceeds the outstanding invoice amount: "
+                            + outstanding.max(BigDecimal.ZERO).toPlainString());
+        }
+
         Payment payment = new Payment();
-        payment.setBillId(request.getBillId());
+        payment.setInvoiceId(invoice.id());
         payment.setAmount(request.getAmount());
         payment.setPaymentMethod(request.getPaymentMethod());
         payment.setCreatedBy(createdBy.trim());
@@ -88,11 +122,11 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponseDto> getPaymentsForBill(Long billId) {
+    public List<PaymentResponseDto> getPaymentsForInvoice(Long invoiceId) {
 
-        validateBillId(billId);
+        validateInvoiceId(invoiceId);
 
-        return paymentRepository.findByBillIdOrderByCreatedAtDesc(billId)
+        return paymentRepository.findByInvoiceIdOrderByCreatedAtDesc(invoiceId)
                 .stream()
                 .map(PaymentMapper::toResponseDto)
                 .toList();
@@ -101,9 +135,26 @@ public class PaymentService {
     // PENDING -> COMPLETED (payment confirmed by the configured process)
     @Transactional
     public PaymentResponseDto confirmPayment(Long id) {
-        Payment payment = changePendingStatus(id, PaymentStatus.COMPLETED);
+        Payment payment = lockPending(id, PaymentStatus.COMPLETED);
+
+        // Lock the invoice too and make sure it still accepts payments
+        // (it may have been cancelled after this payment was created).
+        InvoiceResponse invoice =
+                invoiceService.getByIdForUpdate(payment.getInvoiceId());
+        requireGenerated(invoice);
+
+        transition(payment, PaymentStatus.COMPLETED);
         payment.setPaymentDate(LocalDateTime.now());
-        return saveAndMap(payment);
+        PaymentResponseDto response = saveAndMap(payment);
+
+        // When the money received reaches the invoice total, Billing marks
+        // the invoice PAID.
+        if (netAmount(invoice.id(), SUCCESSFUL_STATUSES)
+                .compareTo(invoice.grandTotal()) >= 0) {
+            invoiceService.updateStatus(invoice.id(), InvoiceStatus.PAID);
+        }
+
+        return response;
     }
 
     // PENDING -> FAILED
@@ -177,6 +228,10 @@ public class PaymentService {
                             + " characters; use a shorter reason");
         }
 
+        // Lock the invoice too, so a refund and a new payment cannot race.
+        InvoiceResponse invoice =
+                invoiceService.getByIdForUpdate(payment.getInvoiceId());
+
         BigDecimal totalRefunded = refunded.add(refundAmount);
 
         payment.setRefundedAmount(totalRefunded);
@@ -189,7 +244,17 @@ public class PaymentService {
 
         transition(payment, newStatus);
 
-        return saveAndMap(payment);
+        PaymentResponseDto response = saveAndMap(payment);
+
+        // If the refund drops the money received below the invoice total,
+        // Billing moves the invoice from PAID back to GENERATED.
+        if (invoice.status() == InvoiceStatus.PAID
+                && netAmount(invoice.id(), SUCCESSFUL_STATUSES)
+                        .compareTo(invoice.grandTotal()) < 0) {
+            invoiceService.markUnpaid(invoice.id());
+        }
+
+        return response;
     }
 
     // Saves an existing payment and flushes right away, so @PreUpdate has
@@ -201,6 +266,13 @@ public class PaymentService {
     }
 
     private Payment changePendingStatus(Long id, PaymentStatus target) {
+        Payment payment = lockPending(id, target);
+        transition(payment, target);
+        return payment;
+    }
+
+    // Loads the payment with a row lock and checks that it is still PENDING.
+    private Payment lockPending(Long id, PaymentStatus target) {
 
         validateId(id);
 
@@ -215,8 +287,27 @@ public class PaymentService {
                             + "; current status: " + payment.getStatus());
         }
 
-        transition(payment, target);
         return payment;
+    }
+
+    // Money counted for an invoice: payment amounts minus refunds,
+    // for the given payment statuses.
+    private BigDecimal netAmount(Long invoiceId,
+                                 List<PaymentStatus> statuses) {
+        BigDecimal paid = paymentRepository
+                .sumAmountsByInvoiceIdAndStatusIn(invoiceId, statuses);
+        BigDecimal refunded = paymentRepository
+                .sumRefundedAmountsByInvoiceIdAndStatusIn(invoiceId, statuses);
+        return paid.subtract(refunded);
+    }
+
+    private void requireGenerated(InvoiceResponse invoice) {
+        if (invoice.status() != InvoiceStatus.GENERATED) {
+            throw new BusinessValidationException(
+                    "Payments are accepted only for GENERATED invoices; "
+                            + "invoice " + invoice.id() + " is "
+                            + invoice.status());
+        }
     }
 
     private void transition(Payment payment, PaymentStatus newStatus) {
@@ -228,10 +319,17 @@ public class PaymentService {
         }
     }
 
-    private void validateBillId(Long billId) {
-        if (billId == null || billId <= 0) {
+    private void validateOrderId(Long orderId) {
+        if (orderId == null || orderId <= 0) {
             throw new BusinessValidationException(
-                    "Bill ID must be greater than zero");
+                    "Order ID must be greater than zero");
+        }
+    }
+
+    private void validateInvoiceId(Long invoiceId) {
+        if (invoiceId == null || invoiceId <= 0) {
+            throw new BusinessValidationException(
+                    "Invoice ID must be greater than zero");
         }
     }
 
