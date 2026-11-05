@@ -1,5 +1,6 @@
 package com.myhourly.jewellery.consumer;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -23,6 +24,9 @@ public class NotificationConsumer {
 	
 	private final ObjectMapper objectMapper;
 	private final NotificationService notificationService;
+	
+	@Value("${notification.low-stock.recipient}")
+	private String lowStockRecipient;
 	
 	@RetryableTopic(attempts = "3",
 					backOff = @BackOff (delay=1000,multiplier = 2.0),
@@ -62,49 +66,57 @@ public class NotificationConsumer {
 		
 	}
 	
-	@RetryableTopic(attempts = "3",
-					backOff = @BackOff(delay = 1000,multiplier = 2.0),
-					topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
-	@KafkaListener(topics = "${app.kafka.low-stock-topic}",
-				   groupId = "${spring.kafka.consumer.group-id}")
-	public void consumeLowStockEvent(@Payload String json) {
-		
-		LowStockEvent event = objectMapper.readValue(json, LowStockEvent.class);
-		
-		if(event.getEventId()==null || event.getEventId().isBlank()) {
-			throw new IllegalArgumentException("Event ID is required");
-		}
-		
-		if(event.getProductId()==null ||
-		   event.getProductName()==null ||
-		   event.getProductName().isBlank() ||
-		   event.getAvailableQuantity()<0 ||
-		   event.getThreshold()<0) {
-			
-			throw new IllegalArgumentException("Invalid product or stock information");
-		}
-		
-		if(event.getAvailableQuantity()<0 || event.getThreshold()<0) {
-			throw new IllegalArgumentException("Stock quantity and threshold cannot be negative");
-		}
-		
-		if(event.getAvailableQuantity()<event.getThreshold()) {
-			
-			notificationService.createFromEvent(
-		            event.getEventId(),
-		            "store-staff",
-		            "LOW_STOCK",
-		            "Low stock alert: " + event.getProductName()
-		                + " (Product ID: " + event.getProductId()
-		                + "). Available: " + event.getAvailableQuantity()
-		                + ", threshold: " + event.getThreshold() + "."
-		        );
-		}
-		
-	}
-	@DltHandler
-	public void handleDeadLetter(@Payload String message,@Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-		System.err.println("Event moved to retry/dead-letter topic "+topic+" : "+message);
-	}
+
+@RetryableTopic(
+    attempts = "3",
+    backOff = @BackOff(delay = 1000, multiplier = 2.0),
+    topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE
+)
+@KafkaListener(
+    topics = "${app.kafka.low-stock-topic}",
+    groupId = "${spring.kafka.consumer.group-id}"
+)
+public void consumeLowStockEvent(@Payload String json) {
+
+    LowStockEvent event =
+            objectMapper.readValue(json, LowStockEvent.class);
+
+    if (event.getEventId() == null || event.getEventId().isBlank()) {
+        throw new IllegalArgumentException("Event ID is required");
+    }
+
+    if (!"LowStockDetected".equals(event.getEventType())) {
+        throw new IllegalArgumentException("Unsupported event type");
+    }
+
+    if (event.getEventVersion() != 1) {
+        throw new IllegalArgumentException("Unsupported event version");
+    }
+
+    if (event.getProductId() == null
+            || event.getAvailableQuantity() < 0
+            || event.getReorderLevel() < 0) {
+
+        throw new IllegalArgumentException(
+                "Invalid product or stock information"
+        );
+    }
+
+    if (event.getAvailableQuantity() > event.getReorderLevel()) {
+        throw new IllegalArgumentException(
+                "Available quantity is above reorder level"
+        );
+    }
+
+    notificationService.createFromEvent(
+            event.getEventId(),
+            lowStockRecipient,
+            "LOW_STOCK",
+            "Low stock alert: Product ID " + event.getProductId()
+                    + ". Available quantity: " + event.getAvailableQuantity()
+                    + ", reorder level: " + event.getReorderLevel() + "."
+    );
+}
+
 
 }
