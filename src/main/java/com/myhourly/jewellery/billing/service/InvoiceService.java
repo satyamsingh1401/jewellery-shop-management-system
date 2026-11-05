@@ -1,8 +1,5 @@
 package com.myhourly.jewellery.billing.service;
 
-import org.springframework.transaction.annotation.Propagation;
-import com.myhourly.jewellery.common.exception.DuplicateResourceException;
-import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
 import com.myhourly.jewellery.billing.dto.BillItemRequest;
@@ -14,8 +11,13 @@ import com.myhourly.jewellery.billing.entity.Invoice;
 import com.myhourly.jewellery.billing.entity.InvoiceItem;
 import com.myhourly.jewellery.billing.enums.InvoiceStatus;
 import com.myhourly.jewellery.billing.repository.InvoiceRepository;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.DuplicateResourceException;
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -25,20 +27,24 @@ public class InvoiceService {
 
     private final BillingCalculatorService calculator;
     private final InvoiceRepository repository;
+    private final ObjectProvider<InvoiceCancellationCheck> cancellationChecks;
 
-    public InvoiceService(BillingCalculatorService calculator, InvoiceRepository repository) {
+    public InvoiceService(BillingCalculatorService calculator, InvoiceRepository repository,
+                          ObjectProvider<InvoiceCancellationCheck> cancellationChecks) {
         this.calculator = calculator;
         this.repository = repository;
+        this.cancellationChecks = cancellationChecks;
     }
 
     @Transactional
     public InvoiceResponse createInvoice(InvoiceCreateRequest request) {
-                // Order and customer verification will be added here once those modules are available.
+        // Order and customer verification will be added here once those modules are available.
         if (request.orderId() != null
                 && repository.existsByOrderIdAndStatusNot(request.orderId(), InvoiceStatus.CANCELLED)) {
             throw new DuplicateResourceException(
                     "An active invoice already exists for order " + request.orderId());
         }
+
         BillCalculationResponse calc = calculator.calculate(new BillCalculationRequest(
                 request.items(), request.discountType(), request.discountValue()));
 
@@ -55,11 +61,8 @@ public class InvoiceService {
                     line.metalValue(), line.makingCharge(), line.lineTotal()));
         }
 
-        // The INSERT runs now, so the database assigns the id.
         Invoice saved = repository.saveAndFlush(invoice);
-        saved.assignInvoiceNumber(formatInvoiceNumber(saved.getId()));
-        // The entity is managed, so Hibernate writes the number with an UPDATE when the
-        // transaction commits. If anything fails, the whole invoice is rolled back.
+        saved.assignInvoiceNumber(String.format(INVOICE_NUMBER_FORMAT, saved.getId()));
         return toResponse(saved);
     }
 
@@ -81,31 +84,50 @@ public class InvoiceService {
         return repository.findByOrderId(orderId).stream().map(this::toResponse).toList();
     }
 
-        @Transactional(readOnly = true)
+    /** The one non-cancelled invoice of an order. Note that a PAID invoice is still active. */
+    @Transactional(readOnly = true)
     public InvoiceResponse getActiveByOrderId(Long orderId) {
         return toResponse(repository.findByOrderIdAndStatusNot(orderId, InvoiceStatus.CANCELLED)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No active invoice found for order " + orderId)));
     }
 
-    // Locks the invoice row until the caller's transaction ends. MANDATORY makes it fail
-    // if the caller has no transaction, because the lock would be released immediately.
+    /**
+     * Locks the invoice row until the caller's transaction ends. MANDATORY makes it fail when
+     * the caller has no transaction, because the lock would be released immediately.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public InvoiceResponse getByIdForUpdate(Long id) {
-        return toResponse(repository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id " + id)));
+        return toResponse(findForUpdate(id));
     }
 
+    /** GENERATED to PAID or CANCELLED. Cancelling runs every registered cancellation check. */
     @Transactional
     public InvoiceResponse updateStatus(Long id, InvoiceStatus newStatus) {
-        Invoice invoice = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id " + id));
+        if (newStatus == InvoiceStatus.GENERATED) {
+            throw new BusinessValidationException(
+                    "An invoice can only be set back to GENERATED through the refund flow");
+        }
+        Invoice invoice = findForUpdate(id);
+        if (newStatus == InvoiceStatus.CANCELLED) {
+            InvoiceResponse current = toResponse(invoice);
+            cancellationChecks.orderedStream().forEach(check -> check.assertCanCancel(current));
+        }
         invoice.changeStatus(newStatus);
         return toResponse(invoice);
     }
 
-    private String formatInvoiceNumber(Long id) {
-        return String.format(INVOICE_NUMBER_FORMAT, id);
+    /** For the Payment module: PAID back to GENERATED after a refund drops the net paid amount. */
+    @Transactional
+    public InvoiceResponse markUnpaid(Long id) {
+        Invoice invoice = findForUpdate(id);
+        invoice.changeStatus(InvoiceStatus.GENERATED);
+        return toResponse(invoice);
+    }
+
+    private Invoice findForUpdate(Long id) {
+        return repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id " + id));
     }
 
     private InvoiceResponse toResponse(Invoice invoice) {

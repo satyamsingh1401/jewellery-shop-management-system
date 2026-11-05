@@ -99,12 +99,14 @@ public class Invoice {
     public List<InvoiceItem> getItems() { return items; }
 
             public void changeStatus(InvoiceStatus newStatus) {
-        if (this.status != InvoiceStatus.GENERATED) {
+        boolean allowed = switch (this.status) {
+            case GENERATED -> newStatus == InvoiceStatus.PAID || newStatus == InvoiceStatus.CANCELLED;
+            case PAID -> newStatus == InvoiceStatus.GENERATED;
+            case CANCELLED -> false;
+        };
+        if (!allowed) {
             throw new BusinessValidationException(
-                    "Invoice is already " + this.status + " and cannot be changed");
-        }
-        if (newStatus == InvoiceStatus.GENERATED) {
-            throw new BusinessValidationException("Invoice is already GENERATED");
+                    "Invoice status cannot change from " + this.status + " to " + newStatus);
         }
         this.status = newStatus;
     }

@@ -25,10 +25,10 @@ public class InvoiceItem {
 
     private Long productId;
 
-    @Column(nullable = false, precision = 12, scale = 3)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal netWeight;
 
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal ratePerGram;
 
     @Column(nullable = false, precision = 14, scale = 2)

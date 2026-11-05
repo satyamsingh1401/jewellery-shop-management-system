@@ -15,12 +15,12 @@ public record BillItemRequest(
         BigDecimal netWeight,
         @NotNull(message = "ratePerGram is required")
         @Positive(message = "ratePerGram must be greater than zero")
-        @Digits(integer = 10, fraction = 2, message = "ratePerGram allows up to 10 digits and 2 decimal places")
+        @Digits(integer = 12, fraction = 2, message = "ratePerGram allows up to 12 digits and 2 decimal places")
         BigDecimal ratePerGram,
         @NotNull(message = "makingChargeType is required")
         MakingChargeType makingChargeType,
         @NotNull(message = "makingChargeValue is required")
         @PositiveOrZero(message = "makingChargeValue must not be negative")
-        @Digits(integer = 10, fraction = 2, message = "makingChargeValue allows up to 10 digits and 2 decimal places")
+        @Digits(integer = 12, fraction = 2, message = "makingChargeValue allows up to 12 digits and 2 decimal places")
         BigDecimal makingChargeValue) {
 }

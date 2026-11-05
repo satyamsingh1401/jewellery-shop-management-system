@@ -28,4 +28,35 @@ class InvoiceStatusTest {
         assertThrows(BusinessValidationException.class,
                 () -> invoice.changeStatus(InvoiceStatus.CANCELLED));
     }
+
+        @Test
+    void paidInvoiceCanReturnToGeneratedAfterARefund() {
+        Invoice invoice = newInvoice();
+        invoice.changeStatus(InvoiceStatus.PAID);
+        invoice.changeStatus(InvoiceStatus.GENERATED);
+        assertEquals(InvoiceStatus.GENERATED, invoice.getStatus());
+    }
+
+    @Test
+    void generatedInvoiceCanBeCancelled() {
+        Invoice invoice = newInvoice();
+        invoice.changeStatus(InvoiceStatus.CANCELLED);
+        assertEquals(InvoiceStatus.CANCELLED, invoice.getStatus());
+    }
+
+    @Test
+    void cancelledInvoiceCannotChangeAgain() {
+        Invoice invoice = newInvoice();
+        invoice.changeStatus(InvoiceStatus.CANCELLED);
+        assertThrows(BusinessValidationException.class, () -> invoice.changeStatus(InvoiceStatus.GENERATED));
+        assertThrows(BusinessValidationException.class, () -> invoice.changeStatus(InvoiceStatus.PAID));
+    }
+
+    @Test
+    void sameStatusIsRejected() {
+        Invoice invoice = newInvoice();
+        assertThrows(BusinessValidationException.class, () -> invoice.changeStatus(InvoiceStatus.GENERATED));
+        invoice.changeStatus(InvoiceStatus.PAID);
+        assertThrows(BusinessValidationException.class, () -> invoice.changeStatus(InvoiceStatus.PAID));
+    }
 }

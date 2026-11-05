@@ -85,4 +85,9 @@ class BillingRequestValidationTest {
                 List.of(item("-5", "6000.00", "500.00")), DiscountType.NONE, null);
         assertTrue(invalidFields(request).contains("items[0].netWeight"));
     }
+        @Test
+    void ratePerGramAllowsTwelveIntegerDigitsButNotThirteen() {
+        assertTrue(invalidFields(item("10", "123456789012.00", "500.00")).isEmpty());
+        assertTrue(invalidFields(item("10", "1234567890123.00", "500.00")).contains("ratePerGram"));
+    }
 }
