@@ -124,6 +124,9 @@ public class InventoryService {
      */
     @Transactional(readOnly = true)
     public boolean checkAvailability(Long productId, int quantity) {
+        if (quantity < 1) {
+            throw new BusinessValidationException("quantity must be at least 1");
+        }
         int available = inventoryRepository.findAvailableQuantity(productId)
                 .orElseThrow(() -> notFound(productId));
         return available >= quantity;

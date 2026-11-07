@@ -89,4 +89,10 @@ class InventoryServiceTest {
         assertThrows(BusinessValidationException.class,
                 () -> service.adjust(10L, new AdjustStockRequest(0, "oops"), "admin"));
     }
+
+    @Test
+    void availabilityCheckRejectsZeroAndNegativeQuantity() {
+        assertThrows(BusinessValidationException.class, () -> service.checkAvailability(10L, 0));
+        assertThrows(BusinessValidationException.class, () -> service.checkAvailability(10L, -5));
+    }
 }
