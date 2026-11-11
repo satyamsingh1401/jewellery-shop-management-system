@@ -23,7 +23,7 @@ public class NotificationRetryScheduler {
 	private final NotificationRepository notificationRepository;
 	private final EmailDeliveryService emailDeliveryService;
 	
-	@Scheduled(fixedDelayString = "${app.notification.retry-delay-ms=30000}")
+	@Scheduled(fixedDelayString = "${app.notification.retry-delay-ms:30000}")
 	public void retryPendingNotifications() {
 		
 		List<Notification> pending = notificationRepository.findTop20ByStatusInAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc(
