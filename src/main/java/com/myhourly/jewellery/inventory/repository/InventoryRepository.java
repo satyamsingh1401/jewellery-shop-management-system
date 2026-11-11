@@ -36,6 +36,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     /** Atomic add. Returns 1 if the product has an inventory row, otherwise 0. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update Inventory i set i.availableQuantity = i.availableQuantity + :qty, i.updatedAt = :now "
-            + "where i.productId = :productId")
+            + "where i.productId = :productId and i.availableQuantity <= " + Integer.MAX_VALUE + " - :qty")
     int addQuantity(@Param("productId") Long productId, @Param("qty") int qty, @Param("now") LocalDateTime now);
 }

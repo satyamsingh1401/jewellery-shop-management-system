@@ -1,12 +1,19 @@
 package com.myhourly.jewellery.inventory.dto;
 
+import com.myhourly.jewellery.inventory.InventoryLimits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /** quantityChange: positive adds stock, negative removes stock. Zero is rejected by the service. */
 public class AdjustStockRequest {
 
-    private int quantityChange;
+    @NotNull
+    @Min(-InventoryLimits.MAX_QUANTITY_PER_MOVEMENT)
+    @Max(InventoryLimits.MAX_QUANTITY_PER_MOVEMENT)
+    private Integer quantityChange;
 
     @NotBlank
     @Size(max = 255)
@@ -14,13 +21,13 @@ public class AdjustStockRequest {
 
     public AdjustStockRequest() { }
 
-    public AdjustStockRequest(int quantityChange, String reason) {
+    public AdjustStockRequest(Integer quantityChange, String reason) {
         this.quantityChange = quantityChange;
         this.reason = reason;
     }
 
-    public int getQuantityChange() { return quantityChange; }
-    public void setQuantityChange(int quantityChange) { this.quantityChange = quantityChange; }
+    public Integer getQuantityChange() { return quantityChange; }
+    public void setQuantityChange(Integer quantityChange) { this.quantityChange = quantityChange; }
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
 }
