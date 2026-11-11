@@ -10,6 +10,7 @@ import com.myhourly.jewellery.inventory.event.OrderEvent;
 import com.myhourly.jewellery.inventory.event.OrderItemPayload;
 import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.common.exception.DuplicateResourceException;
+import com.myhourly.jewellery.common.exception.InsufficientStockException;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.inventory.repository.InventoryRepository;
 import com.myhourly.jewellery.inventory.repository.ProcessedEventRepository;
@@ -210,7 +211,7 @@ public class InventoryService {
             if (!inventoryRepository.existsByProductId(productId)) {
                 throw notFound(productId);
             }
-            throw new BusinessValidationException(
+            throw new InsufficientStockException(
                     "Insufficient stock for product " + productId + " (requested " + qty + ")");
         }
         int balance = currentQuantity(productId);

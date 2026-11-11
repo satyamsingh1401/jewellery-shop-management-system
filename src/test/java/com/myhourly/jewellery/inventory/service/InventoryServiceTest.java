@@ -6,6 +6,7 @@ import com.myhourly.jewellery.inventory.event.LowStockDetectedEvent;
 import com.myhourly.jewellery.inventory.event.OrderEvent;
 import com.myhourly.jewellery.inventory.event.OrderItemPayload;
 import com.myhourly.jewellery.common.exception.BusinessValidationException;
+import com.myhourly.jewellery.common.exception.InsufficientStockException;
 import com.myhourly.jewellery.inventory.repository.InventoryRepository;
 import com.myhourly.jewellery.inventory.repository.ProcessedEventRepository;
 import com.myhourly.jewellery.inventory.repository.StockMovementRepository;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -55,9 +57,20 @@ class InventoryServiceTest {
         when(inventoryRepository.deductIfAvailable(anyLong(), anyInt(), any(LocalDateTime.class))).thenReturn(0);
         when(inventoryRepository.existsByProductId(10L)).thenReturn(true);
 
-        assertThrows(BusinessValidationException.class,
+        assertThrows(InsufficientStockException.class,
                 () -> service.processOrderEvent(confirmed("evt-2", 10L, 5)));
         verify(processedEventRepository, never()).save(any());
+    }
+
+    @Test
+    void adjustBeyondAvailableStockThrowsInsufficientStock() {
+        when(inventoryRepository.deductIfAvailable(anyLong(), anyInt(), any(LocalDateTime.class))).thenReturn(0);
+        when(inventoryRepository.existsByProductId(1L)).thenReturn(true);
+
+        InsufficientStockException ex = assertThrows(InsufficientStockException.class,
+                () -> service.adjust(1L, new AdjustStockRequest(-100, "Excess stock deduction test"), "admin"));
+        assertEquals("Insufficient stock for product 1 (requested 100)", ex.getMessage());
+        verify(movementRepository, never()).save(any());
     }
 
     @Test
