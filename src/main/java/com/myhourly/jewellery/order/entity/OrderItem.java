@@ -36,16 +36,16 @@ public class OrderItem {
     @Column(precision = 10, scale = 3)
     private BigDecimal netWeight;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 14, scale = 2)
     private BigDecimal ratePerGramSnapshot;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 14, scale = 2)
     private BigDecimal makingChargeSnapshot;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 14, scale = 2)
     private BigDecimal taxSnapshot;
 
-    @Column(precision = 12, scale = 2, nullable = false)
+    @Column(precision = 14, scale = 2, nullable = false)
     private BigDecimal lineTotal;
 
     

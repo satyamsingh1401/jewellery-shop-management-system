@@ -17,7 +17,7 @@ import com.myhourly.jewellery.order.dto.CreateOrderRequest;
 import com.myhourly.jewellery.order.dto.OrderResponse;
 import com.myhourly.jewellery.order.enums.OrderStatus;
 import com.myhourly.jewellery.order.enums.PaymentStatus;
-import com.myhourly.jewellery.order.service.impl.OrderService;
+import com.myhourly.jewellery.order.service.OrderService;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -34,6 +34,13 @@ public class OrderController {
         OrderResponse response = orderService.createOrder(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+	
+	@GetMapping("/id/{id}")
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id) {
+        OrderResponse response = orderService.getOrderById(id);
+        return ResponseEntity.ok(response);
+    }
+	
 	
 	@GetMapping("/{orderNumber}")
     public ResponseEntity<OrderResponse> getOrderByOrderNumber(@PathVariable String orderNumber) {

@@ -31,16 +31,16 @@ public class Order {
     @Column(name = "payment_status", nullable = false, length = 30)
     private PaymentStatus paymentStatus;
 
-    @Column(precision = 12, scale = 2, nullable = false)
+    @Column(precision = 14, scale = 2, nullable = false)
     private BigDecimal subtotalAmount;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 14, scale = 2)
     private BigDecimal discountAmount;
 
-    @Column(precision = 12, scale = 2, nullable = false)
+    @Column(precision = 14, scale = 2, nullable = false)
     private BigDecimal taxAmount;
 
-    @Column(precision = 12, scale = 2, nullable = false)
+    @Column(precision = 14, scale = 2, nullable = false)
     private BigDecimal totalAmount;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
