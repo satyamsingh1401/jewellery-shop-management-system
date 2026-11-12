@@ -3,8 +3,10 @@ package com.myhourly.jewellery.billing.controller;
 import com.myhourly.jewellery.billing.dto.InvoiceCreateRequest;
 import com.myhourly.jewellery.billing.dto.InvoiceResponse;
 import com.myhourly.jewellery.billing.dto.InvoiceStatusUpdateRequest;
+import com.myhourly.jewellery.billing.enums.InvoiceStatus;
 import com.myhourly.jewellery.billing.service.InvoiceHtmlRenderer;
 import com.myhourly.jewellery.billing.service.InvoiceService;
+import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -56,6 +58,10 @@ public class InvoiceController {
     @PatchMapping("/{id}/status")
     public InvoiceResponse updateStatus(@PathVariable Long id,
                                         @Valid @RequestBody InvoiceStatusUpdateRequest request) {
+        if (request.status() != InvoiceStatus.CANCELLED) {
+            throw new BusinessValidationException(
+                    "Only CANCELLED can be set on this endpoint. PAID is set by the payment process.");
+        }
         return invoiceService.updateStatus(id, request.status());
     }
 
