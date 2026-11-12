@@ -7,6 +7,7 @@ import com.myhourly.jewellery.payment.entity.Payment;
 import com.myhourly.jewellery.common.exception.BusinessValidationException;
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
+import com.myhourly.jewellery.payment.enums.OrderPaymentStatus;
 import com.myhourly.jewellery.payment.enums.PaymentMethod;
 import com.myhourly.jewellery.payment.enums.PaymentStatus;
 import com.myhourly.jewellery.payment.repository.PaymentRepository;
@@ -40,6 +41,9 @@ class PaymentServiceTest {
 
     @Mock
     private InvoiceService invoiceService;
+
+    @Mock
+    private OrderPaymentStatusUpdater orderPaymentStatusUpdater;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -570,7 +574,7 @@ class PaymentServiceTest {
 
     @Test
     void partialRefundShouldSetPartiallyRefundedStatus() {
-        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "500");
         Payment payment = createPayment(PaymentStatus.COMPLETED);
 
         when(paymentRepository.findByIdForUpdate(10L))
@@ -590,7 +594,7 @@ class PaymentServiceTest {
 
     @Test
     void fullRefundShouldSetRefundedStatus() {
-        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "1500");
         Payment payment = createPayment(PaymentStatus.COMPLETED);
 
         when(paymentRepository.findByIdForUpdate(10L))
@@ -643,7 +647,7 @@ class PaymentServiceTest {
 
     @Test
     void repeatedRefundShouldAllowRemainingRefundableAmount() {
-        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "500");
         Payment payment = createPayment(PaymentStatus.PARTIALLY_REFUNDED);
         payment.setRefundedAmount(new BigDecimal("500"));
 
@@ -661,7 +665,7 @@ class PaymentServiceTest {
 
     @Test
     void repeatedPartialRefundShouldStayPartiallyRefunded() {
-        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "500");
         Payment payment = createPayment(PaymentStatus.PARTIALLY_REFUNDED);
         payment.setRefundedAmount(new BigDecimal("500"));
 
@@ -679,7 +683,7 @@ class PaymentServiceTest {
 
     @Test
     void repeatedRefundShouldKeepEarlierReasons() {
-        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", null, null);
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "500");
         Payment payment = createPayment(PaymentStatus.PARTIALLY_REFUNDED);
         payment.setRefundedAmount(new BigDecimal("500"));
         payment.setRefundReason("First reason");
@@ -760,6 +764,130 @@ class PaymentServiceTest {
                 () -> paymentService.recordRefund(10L, amount, reason));
 
         verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    // ---------------------------------------------------------------
+    // Order payment status sync
+    // ---------------------------------------------------------------
+
+    @Test
+    void confirmPaymentShouldTellOrderPartiallyPaidWhenTotalNotReached() {
+        Payment payment = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "0");
+
+        paymentService.confirmPayment(10L);
+
+        verify(orderPaymentStatusUpdater).updatePaymentStatus(
+                ORDER_ID, OrderPaymentStatus.PARTIALLY_PAID);
+    }
+
+    @Test
+    void confirmPaymentShouldTellOrderPaidWhenTotalIsReached() {
+        Payment payment = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubLockedInvoice(InvoiceStatus.GENERATED, "1500.00", "1500", "0");
+
+        paymentService.confirmPayment(10L);
+
+        verify(orderPaymentStatusUpdater).updatePaymentStatus(
+                ORDER_ID, OrderPaymentStatus.PAID);
+    }
+
+    @Test
+    void partialRefundShouldTellOrderPartiallyPaid() {
+        Payment payment = createPayment(PaymentStatus.COMPLETED);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        // Invoice total 1500, 1500 paid, 500 refunded: 1000 is left.
+        stubLockedInvoice(InvoiceStatus.PAID, "1500.00", "1500", "500");
+
+        paymentService.recordRefund(
+                10L, new BigDecimal("500"), "Partial refund");
+
+        verify(orderPaymentStatusUpdater).updatePaymentStatus(
+                ORDER_ID, OrderPaymentStatus.PARTIALLY_PAID);
+    }
+
+    @Test
+    void fullRefundShouldTellOrderRefunded() {
+        Payment payment = createPayment(PaymentStatus.COMPLETED);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        // Everything that was paid has been refunded.
+        stubLockedInvoice(InvoiceStatus.PAID, "1500.00", "1500", "1500");
+
+        paymentService.recordRefund(
+                10L, new BigDecimal("1500"), "Full refund");
+
+        verify(orderPaymentStatusUpdater).updatePaymentStatus(
+                ORDER_ID, OrderPaymentStatus.REFUNDED);
+    }
+
+    @Test
+    void orderShouldNotBeToldWhenConfirmIsRejected() {
+        Payment payment = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        stubLockedInvoice(InvoiceStatus.CANCELLED, "1500.00", null, null);
+
+        assertThrows(BusinessValidationException.class,
+                () -> paymentService.confirmPayment(10L));
+
+        verifyNoInteractions(orderPaymentStatusUpdater);
+    }
+
+    @Test
+    void orderShouldNotBeToldWhenPaymentFailsOrIsCancelled() {
+        Payment failing = createPayment(PaymentStatus.PENDING);
+        Payment cancelling = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(failing));
+        when(paymentRepository.findByIdForUpdate(11L))
+                .thenReturn(Optional.of(cancelling));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        paymentService.failPayment(10L);
+        paymentService.cancelPayment(11L);
+
+        verifyNoInteractions(orderPaymentStatusUpdater);
+    }
+
+    @Test
+    void confirmPaymentShouldFailWhenOrderModuleFails() {
+        Payment payment = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubLockedInvoice(InvoiceStatus.GENERATED, "5000.00", "1500", "0");
+        doThrow(new ResourceNotFoundException("Order not found: " + ORDER_ID))
+                .when(orderPaymentStatusUpdater)
+                .updatePaymentStatus(any(Long.class),
+                        any(OrderPaymentStatus.class));
+
+        // The exception goes out of the @Transactional method, so the
+        // transaction rolls back and the payment is not confirmed.
+        assertThrows(ResourceNotFoundException.class,
+                () -> paymentService.confirmPayment(10L));
     }
 
     // Invoice of order 7, found and locked by the service. The two repository

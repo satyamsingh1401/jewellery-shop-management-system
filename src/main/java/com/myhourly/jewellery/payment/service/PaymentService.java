@@ -8,6 +8,7 @@ import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
 import com.myhourly.jewellery.payment.entity.Payment;
 import com.myhourly.jewellery.payment.dto.PaymentRequestDto;
 import com.myhourly.jewellery.payment.dto.PaymentResponseDto;
+import com.myhourly.jewellery.payment.enums.OrderPaymentStatus;
 import com.myhourly.jewellery.payment.enums.PaymentStatus;
 import com.myhourly.jewellery.payment.mapper.PaymentMapper;
 import com.myhourly.jewellery.payment.repository.PaymentRepository;
@@ -39,11 +40,14 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final InvoiceService invoiceService;
+    private final OrderPaymentStatusUpdater orderPaymentStatusUpdater;
 
     public PaymentService(PaymentRepository paymentRepository,
-                          InvoiceService invoiceService) {
+                          InvoiceService invoiceService,
+                          OrderPaymentStatusUpdater orderPaymentStatusUpdater) {
         this.paymentRepository = paymentRepository;
         this.invoiceService = invoiceService;
+        this.orderPaymentStatusUpdater = orderPaymentStatusUpdater;
     }
 
     @Transactional
@@ -154,6 +158,8 @@ public class PaymentService {
             invoiceService.updateStatus(invoice.id(), InvoiceStatus.PAID);
         }
 
+        syncOrderPaymentStatus(invoice);
+
         return response;
     }
 
@@ -254,7 +260,30 @@ public class PaymentService {
             invoiceService.markUnpaid(invoice.id());
         }
 
+        syncOrderPaymentStatus(invoice);
+
         return response;
+    }
+
+    // Tells the Order module how much of the order is paid. This runs in the
+    // same transaction, so the invoice, the payments and the order never
+    // disagree: if the Order module throws, the whole confirm/refund rolls back.
+    private void syncOrderPaymentStatus(InvoiceResponse invoice) {
+        BigDecimal received = netAmount(invoice.id(), SUCCESSFUL_STATUSES);
+
+        OrderPaymentStatus status;
+        if (received.compareTo(invoice.grandTotal()) >= 0) {
+            status = OrderPaymentStatus.PAID;
+        } else if (received.signum() > 0) {
+            status = OrderPaymentStatus.PARTIALLY_PAID;
+        } else {
+            // Called only after a confirm or a refund: nothing left means
+            // everything that was paid has been refunded.
+            status = OrderPaymentStatus.REFUNDED;
+        }
+
+        orderPaymentStatusUpdater.updatePaymentStatus(
+                invoice.orderId(), status);
     }
 
     // Saves an existing payment and flushes right away, so @PreUpdate has
