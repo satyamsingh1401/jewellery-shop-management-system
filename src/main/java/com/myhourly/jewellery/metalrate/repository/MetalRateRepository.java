@@ -1,3 +1,4 @@
+
 package com.myhourly.jewellery.metalrate.repository;
 
 import com.myhourly.jewellery.metalrate.entity.MetalRate;

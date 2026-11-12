@@ -25,7 +25,7 @@ class PurityTest {
     void constantNamesMatchProductModuleEnums() {
         assertThat(Purity.values())
                 .extracting(Enum::name)
-                .containsExactly("K18", "K22", "K24", "SILVER_925", "PLATINUM_950");
+                .containsExactly("K18", "K22", "K24", "SILVER_925", "SILVER_999", "PLATINUM_950");
         assertThat(MetalType.values())
                 .extracting(Enum::name)
                 .containsExactly("GOLD", "SILVER", "PLATINUM");

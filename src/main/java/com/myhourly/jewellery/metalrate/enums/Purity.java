@@ -1,10 +1,15 @@
+
 package com.myhourly.jewellery.metalrate.enums;
 
 public enum Purity {
+
     K18(MetalType.GOLD),
     K22(MetalType.GOLD),
     K24(MetalType.GOLD),
+
     SILVER_925(MetalType.SILVER),
+    SILVER_999(MetalType.SILVER),
+
     PLATINUM_950(MetalType.PLATINUM);
 
     private final MetalType metalType;
