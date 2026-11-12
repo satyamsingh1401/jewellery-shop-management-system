@@ -41,6 +41,12 @@ public class PaymentController {
         return paymentService.getAllPayments();
     }
 
+    // Payments waiting for confirmation, newest first.
+    @GetMapping("/pending")
+    public List<PaymentResponseDto> getPendingPayments() {
+        return paymentService.getPendingPayments();
+    }
+
     @GetMapping("/{id}")
     public PaymentResponseDto getPaymentById(@PathVariable Long id) {
         return paymentService.getPaymentById(id);

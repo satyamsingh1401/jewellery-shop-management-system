@@ -17,11 +17,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PaymentService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(PaymentService.class);
 
     private static final BigDecimal MIN_AMOUNT = new BigDecimal("0.01");
     private static final int MAX_REASON_LENGTH = 500;
@@ -136,6 +141,17 @@ public class PaymentService {
                 .toList();
     }
 
+    // Payments still waiting for confirmation (for example because the Order
+    // module could not be updated). Staff can confirm them again later.
+    @Transactional(readOnly = true)
+    public List<PaymentResponseDto> getPendingPayments() {
+        return paymentRepository
+                .findByStatusOrderByCreatedAtDesc(PaymentStatus.PENDING)
+                .stream()
+                .map(PaymentMapper::toResponseDto)
+                .toList();
+    }
+
     // PENDING -> COMPLETED (payment confirmed by the configured process)
     @Transactional
     public PaymentResponseDto confirmPayment(Long id) {
@@ -158,7 +174,7 @@ public class PaymentService {
             invoiceService.updateStatus(invoice.id(), InvoiceStatus.PAID);
         }
 
-        syncOrderPaymentStatus(invoice);
+        syncOrderPaymentStatus(payment.getId(), invoice);
 
         return response;
     }
@@ -260,15 +276,19 @@ public class PaymentService {
             invoiceService.markUnpaid(invoice.id());
         }
 
-        syncOrderPaymentStatus(invoice);
+        syncOrderPaymentStatus(payment.getId(), invoice);
 
         return response;
     }
 
     // Tells the Order module how much of the order is paid. This runs in the
     // same transaction, so the invoice, the payments and the order never
-    // disagree: if the Order module throws, the whole confirm/refund rolls back.
-    private void syncOrderPaymentStatus(InvoiceResponse invoice) {
+    // disagree. If the Order module fails, the whole confirm/refund rolls
+    // back (a payment being confirmed stays PENDING and can be confirmed
+    // again once the order problem is fixed) and the failure is logged with
+    // both ids so the stuck payment can be found.
+    private void syncOrderPaymentStatus(Long paymentId,
+                                        InvoiceResponse invoice) {
         BigDecimal received = netAmount(invoice.id(), SUCCESSFUL_STATUSES);
 
         OrderPaymentStatus status;
@@ -282,8 +302,23 @@ public class PaymentService {
             status = OrderPaymentStatus.REFUNDED;
         }
 
-        orderPaymentStatusUpdater.updatePaymentStatus(
-                invoice.orderId(), status);
+        try {
+            orderPaymentStatusUpdater.updatePaymentStatus(
+                    invoice.orderId(), status);
+        } catch (RuntimeException ex) {
+            String reason = ex.getMessage() == null
+                    ? ex.getClass().getSimpleName()
+                    : ex.getMessage();
+
+            log.error("Order update failed, payment {} was not changed: "
+                            + "order {} could not be set to {} ({})",
+                    paymentId, invoice.orderId(), status, reason, ex);
+
+            throw new BusinessValidationException(
+                    "Payment " + paymentId + " was not changed because order "
+                            + invoice.orderId() + " could not be updated ("
+                            + reason + "). Fix the order problem and try again.");
+        }
     }
 
     // Saves an existing payment and flushes right away, so @PreUpdate has

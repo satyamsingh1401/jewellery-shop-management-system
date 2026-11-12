@@ -46,6 +46,21 @@ class PaymentControllerTest {
     }
 
     @Test
+    void getPendingPaymentsShouldReturnOk() throws Exception {
+        PaymentResponseDto pending = new PaymentResponseDto();
+        pending.setId(5L);
+        pending.setStatus(PaymentStatus.PENDING);
+
+        when(paymentService.getPendingPayments()).thenReturn(List.of(pending));
+
+        mockMvc.perform(get("/api/payments/pending")
+                .with(user("user")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(5))
+                .andExpect(jsonPath("$[0].status").value("PENDING"));
+    }
+
+    @Test
     void getPaymentByIdShouldReturnPayment() throws Exception {
         PaymentResponseDto response = new PaymentResponseDto();
         response.setId(1L);

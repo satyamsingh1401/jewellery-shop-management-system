@@ -871,8 +871,9 @@ class PaymentServiceTest {
     }
 
     @Test
-    void confirmPaymentShouldFailWhenOrderModuleFails() {
+    void confirmPaymentShouldFailWithClearMessageWhenOrderUpdateFails() {
         Payment payment = createPayment(PaymentStatus.PENDING);
+        payment.setId(10L);
 
         when(paymentRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(payment));
@@ -885,9 +886,71 @@ class PaymentServiceTest {
                         any(OrderPaymentStatus.class));
 
         // The exception goes out of the @Transactional method, so the
-        // transaction rolls back and the payment is not confirmed.
-        assertThrows(ResourceNotFoundException.class,
+        // transaction rolls back and the payment stays PENDING in the
+        // database. The message names both ids and the reason.
+        BusinessValidationException ex = assertThrows(
+                BusinessValidationException.class,
                 () -> paymentService.confirmPayment(10L));
+
+        assertTrue(ex.getMessage().contains("Payment 10"));
+        assertTrue(ex.getMessage().contains("order " + ORDER_ID));
+        assertTrue(ex.getMessage().contains("Order not found"));
+    }
+
+    @Test
+    void refundShouldFailWithClearMessageWhenOrderUpdateFails() {
+        Payment payment = createPayment(PaymentStatus.COMPLETED);
+        payment.setId(10L);
+
+        when(paymentRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubLockedInvoice(InvoiceStatus.PAID, "1500.00", "1500", "500");
+        doThrow(new IllegalStateException("Order service down"))
+                .when(orderPaymentStatusUpdater)
+                .updatePaymentStatus(any(Long.class),
+                        any(OrderPaymentStatus.class));
+
+        BusinessValidationException ex = assertThrows(
+                BusinessValidationException.class,
+                () -> paymentService.recordRefund(
+                        10L, new BigDecimal("500"), "Partial refund"));
+
+        assertTrue(ex.getMessage().contains("Payment 10"));
+        assertTrue(ex.getMessage().contains("order " + ORDER_ID));
+        assertTrue(ex.getMessage().contains("Order service down"));
+    }
+
+    // ---------------------------------------------------------------
+    // getPendingPayments
+    // ---------------------------------------------------------------
+
+    @Test
+    void getPendingPaymentsShouldReturnOnlyPendingPayments() {
+        Payment first = createPayment(PaymentStatus.PENDING);
+        Payment second = createPayment(PaymentStatus.PENDING);
+
+        when(paymentRepository.findByStatusOrderByCreatedAtDesc(
+                PaymentStatus.PENDING))
+                .thenReturn(List.of(first, second));
+
+        var results = paymentService.getPendingPayments();
+
+        assertEquals(2, results.size());
+        assertTrue(results.stream()
+                .allMatch(r -> r.getStatus() == PaymentStatus.PENDING));
+        verify(paymentRepository).findByStatusOrderByCreatedAtDesc(
+                PaymentStatus.PENDING);
+    }
+
+    @Test
+    void getPendingPaymentsShouldReturnEmptyListWhenNothingIsPending() {
+        when(paymentRepository.findByStatusOrderByCreatedAtDesc(
+                PaymentStatus.PENDING))
+                .thenReturn(List.of());
+
+        assertTrue(paymentService.getPendingPayments().isEmpty());
     }
 
     // Invoice of order 7, found and locked by the service. The two repository
