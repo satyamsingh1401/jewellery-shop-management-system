@@ -1,5 +1,6 @@
 package com.myhourly.jewellery.order.entity;
 
+import com.myhourly.jewellery.customer.entity.Customer;
 import com.myhourly.jewellery.order.enums.OrderStatus;
 import com.myhourly.jewellery.order.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -20,8 +21,9 @@ public class Order {
     @Column(name = "order_number", nullable = false, unique = true, length = 50)
     private String orderNumber;
 
-    @Column(name = "customer_id", nullable = false)
-    private Long customerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false, length = 30)
@@ -60,13 +62,13 @@ public class Order {
     }
 
     // Parameterized Constructor
-    public Order(Long id, String orderNumber, Long customerId, OrderStatus orderStatus,
+    public Order(Long id, String orderNumber, Customer customer, OrderStatus orderStatus,
                  PaymentStatus paymentStatus, BigDecimal subtotalAmount, BigDecimal discountAmount,
                  BigDecimal taxAmount, BigDecimal totalAmount, List<OrderItem> items,
                  String createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.orderNumber = orderNumber;
-        this.customerId = customerId;
+        this.customer = customer;
         this.orderStatus = orderStatus;
         this.paymentStatus = paymentStatus;
         this.subtotalAmount = subtotalAmount;
@@ -124,12 +126,12 @@ public class Order {
         this.orderNumber = orderNumber;
     }
 
-    public Long getCustomerId() {
-        return customerId;
+    public Customer getCustomer() {
+        return customer;
     }
 
-    public void setCustomerId(Long customerId) {
-        this.customerId = customerId;
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
     }
 
     public OrderStatus getOrderStatus() {
