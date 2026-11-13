@@ -59,6 +59,8 @@ public class ProductService {
         }
     }
 
+
+
     private void validateMetalPurity(
             MetalType metalType,
             Purity purity) {
@@ -78,6 +80,8 @@ public class ProductService {
             );
         }
     }
+
+
 
     @Transactional
     public ProductResponseDto create(ProductRequestDto request) {
@@ -127,6 +131,8 @@ public class ProductService {
         // Step 7: Return product response.
         return productMapper.toResponse(finalProduct);
     }
+
+
 
 
     public ProductResponseDto getById(Long id) {
