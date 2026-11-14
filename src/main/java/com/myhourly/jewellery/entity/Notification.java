@@ -20,7 +20,7 @@ public class Notification {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	
-	@Column(nullable = false, length = 1000)
+	@Column(name = "event_id", length = 100, unique = true)
 	private String eventId;
 	
 	@Column(nullable = false, length = 225)
