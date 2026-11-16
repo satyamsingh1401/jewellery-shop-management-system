@@ -3,6 +3,7 @@ package com.myhourly.jewellery.security.jwt;
 import com.myhourly.jewellery.security.entity.User;
 import com.myhourly.jewellery.security.repository.UserRepository;
 import com.myhourly.jewellery.security.service.CustomUserDetailsService;
+import com.myhourly.jewellery.security.service.RevokedTokenService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -31,6 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailsService;
     private final UserRepository userRepository;
     private final AuthenticationEntryPoint authenticationEntryPoint;
+    private final RevokedTokenService revokedTokenService;
 
     @Override
     protected void doFilterInternal(
@@ -65,7 +67,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String email = jwtService.extractUsername(token);
-
             if (email == null || email.isBlank()) {
                 rejectRequest(
                         request,
@@ -74,6 +75,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
                 return;
             }
+            // Check whether the JWT has been revoked.
+            String tokenId = jwtService.extractTokenId(token);
+
+            if (revokedTokenService.isTokenRevoked(tokenId)) {
+                rejectRequest(
+                        request,
+                        response,
+                        "Your session has been logged out. Please log in again."
+                );
+                return;
+            }
+
 
             // Do not overwrite an existing authentication.
             if (SecurityContextHolder.getContext().getAuthentication() != null) {

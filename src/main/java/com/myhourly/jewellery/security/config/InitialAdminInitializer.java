@@ -22,6 +22,7 @@ public class InitialAdminInitializer implements ApplicationRunner {
     private final String adminEmail;
     private final String adminPassword;
 
+    //constructor
     public InitialAdminInitializer(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -40,7 +41,7 @@ public class InitialAdminInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
 
-        // Do not create or reset an Admin if one already exists.
+        // Will not create or reset an Admin if one already exists.
         if (userRepository.existsByRole(Role.ADMIN)) {
             return;
         }
