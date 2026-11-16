@@ -1,4 +1,4 @@
-package com.myhourly.jewellery.security.exception;
+package com.myhourly.jewellery.common.exception;
 
 public class AccountInactiveException extends RuntimeException {
 

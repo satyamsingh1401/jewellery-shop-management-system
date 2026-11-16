@@ -1,5 +1,4 @@
-package com.myhourly.jewellery.security.exception;
-
+package com.myhourly.jewellery.common.exception;
 
 public class BusinessException extends RuntimeException {
 
@@ -7,4 +6,3 @@ public class BusinessException extends RuntimeException {
         super(message);
     }
 }
-

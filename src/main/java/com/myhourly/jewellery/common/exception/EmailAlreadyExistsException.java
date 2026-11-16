@@ -1,4 +1,4 @@
-package com.myhourly.jewellery.security.exception;
+package com.myhourly.jewellery.common.exception;
 
 public class EmailAlreadyExistsException extends RuntimeException {
     public EmailAlreadyExistsException(String message) {

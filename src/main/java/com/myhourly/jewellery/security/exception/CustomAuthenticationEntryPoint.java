@@ -1,7 +1,7 @@
 package com.myhourly.jewellery.security.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myhourly.jewellery.security.dto.ApiErrorResponse;
+import com.myhourly.jewellery.common.response.ApiError;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -38,7 +38,7 @@ public class CustomAuthenticationEntryPoint
             message = "Authentication token is required. Please log in.";
         }
 
-        ApiErrorResponse errorResponse = ApiErrorResponse.builder()
+        ApiError errorResponse = ApiError.builder()
                 .timestamp(Instant.now())
                 .status(HttpStatus.UNAUTHORIZED.value())
                 .error(HttpStatus.UNAUTHORIZED.getReasonPhrase())
