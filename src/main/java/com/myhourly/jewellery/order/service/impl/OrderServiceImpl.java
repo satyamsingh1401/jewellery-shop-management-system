@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
-import com.myhourly.jewellery.customer.entity.Customer;
+
 import com.myhourly.jewellery.customer.repository.CustomerRepository;
 import com.myhourly.jewellery.order.dto.CreateOrderRequest;
 import com.myhourly.jewellery.order.dto.OrderItemRequest;
@@ -40,9 +40,10 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse createOrder(CreateOrderRequest request) {
         Order order = new Order();
         order.setOrderNumber(generateOrderNumber());
-        Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId()));
-        order.setCustomer(customer);
+        if (!customerRepository.existsById(request.getCustomerId())) {
+            throw new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId());
+        }
+        order.setCustomerId(request.getCustomerId());
         order.setCreatedBy(request.getCreatedBy());
 
         BigDecimal discount = ((request.getDiscountAmount() != null) ? request.getDiscountAmount() : BigDecimal.ZERO)
@@ -170,7 +171,7 @@ public class OrderServiceImpl implements OrderService {
         return new OrderResponse(
                 order.getId(),
                 order.getOrderNumber(),
-                order.getCustomer() != null ? order.getCustomer().getId() : null,
+                order.getCustomerId(),
                 order.getOrderStatus(),
                 order.getPaymentStatus(),
                 order.getSubtotalAmount(),
