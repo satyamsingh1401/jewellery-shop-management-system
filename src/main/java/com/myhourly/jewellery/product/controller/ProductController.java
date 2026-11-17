@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,7 @@ public class ProductController {
 
     private final ProductService productService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ProductResponseDto> create(@Valid @RequestBody ProductRequestDto request) {
 // Step 1: Pass the validated request to the service layer.
@@ -35,6 +37,7 @@ public class ProductController {
                 .body(response);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDto> getById(
             @PathVariable @Positive Long id) {
@@ -48,6 +51,7 @@ public class ProductController {
     }
 
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     @GetMapping
     public ResponseEntity<Page<ProductResponseDto>> search(
 
@@ -84,6 +88,7 @@ public class ProductController {
     }
 
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDto> update(
             @PathVariable @Positive Long id,
@@ -97,6 +102,7 @@ public class ProductController {
     }
 
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ProductResponseDto> changeStatus(
             @PathVariable @Positive Long id, @Valid @RequestBody ProductStatusRequestDto request) {
