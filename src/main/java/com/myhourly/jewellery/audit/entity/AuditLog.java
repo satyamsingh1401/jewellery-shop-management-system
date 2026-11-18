@@ -1,4 +1,5 @@
 package com.myhourly.jewellery.audit.entity;
+import com.myhourly.jewellery.audit.enums.AuditAction;
 
 import com.myhourly.jewellery.audit.enums.AuditAction;
 import jakarta.persistence.*;
