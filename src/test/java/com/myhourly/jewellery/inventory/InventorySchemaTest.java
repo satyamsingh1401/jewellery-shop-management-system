@@ -22,8 +22,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 class InventorySchemaTest {
 
+    @SuppressWarnings("rawtypes")
     @MockitoBean
-    KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate kafkaTemplate;
 
     @Autowired
     JdbcTemplate jdbc;

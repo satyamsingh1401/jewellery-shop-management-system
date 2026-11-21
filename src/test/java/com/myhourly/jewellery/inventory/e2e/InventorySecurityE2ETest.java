@@ -14,8 +14,9 @@ class InventorySecurityE2ETest extends E2eSupport {
     private static final String ADMIN = E2eSecurityConfig.ADMIN;
     private static final String ADMIN_PASS = E2eSecurityConfig.ADMIN_PASS;
 
+    @SuppressWarnings("rawtypes")
     @MockitoBean
-    KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate kafkaTemplate;
 
     @Test
     @DisplayName("SEC-01 every inventory endpoint rejects anonymous calls with 401")

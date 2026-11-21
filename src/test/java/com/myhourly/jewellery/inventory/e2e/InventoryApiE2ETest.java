@@ -33,8 +33,9 @@ import static org.mockito.Mockito.verify;
 
 class InventoryApiE2ETest extends E2eSupport {
 
+    @SuppressWarnings("rawtypes")
     @MockitoBean
-    KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate kafkaTemplate;
 
     @Autowired
     InventoryRepository inventoryRepository;

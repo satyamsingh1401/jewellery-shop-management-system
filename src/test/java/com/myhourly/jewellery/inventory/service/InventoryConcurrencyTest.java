@@ -55,8 +55,9 @@ class InventoryConcurrencyTest {
 
     private static final long PRODUCT = 1L;
 
+    @SuppressWarnings("rawtypes")
     @MockitoBean
-    KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate kafkaTemplate;
 
     @Autowired InventoryService inventoryService;
     @Autowired InventoryRepository inventoryRepository;
