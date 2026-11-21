@@ -99,10 +99,10 @@ class InventorySecurityE2ETest extends E2eSupport {
     }
 
     @Test
-    @DisplayName("SEC-17 a firewall-rejected path for an authenticated user is refused without leaking internals")
+    @DisplayName("SEC-17 a firewall-rejected path for an authenticated user returns 400, not 401")
     void rejectedPathNotUnauthorized() {
         Res r = call("GET", "/api/inventory/1;DROP%20TABLE%20inventory", null, USER, PASS);
-        assertThat(r.status()).isIn(400, 401);
+        assertThat(r.status()).isEqualTo(400);
         assertThat(r.raw()).doesNotContain("Exception").doesNotContain("trace");
     }
 

@@ -29,13 +29,16 @@ public class OrderEventConsumer {
     }
 
     @KafkaListener(topics = "${inventory.kafka.order-events-topic:order-events}",
-            groupId = "${spring.kafka.consumer.group-id:inventory-service}")
+            groupId = "${inventory.kafka.consumer-group-id:inventory-service}")
     public void consume(String message) {
         OrderEvent event;
         try {
             event = jsonMapper.readValue(message, OrderEvent.class);
         } catch (JacksonException e) {
             throw new IllegalArgumentException("Malformed order event: " + e.getMessage(), e);
+        }
+        if (event == null) {
+            throw new IllegalArgumentException("Order event message is empty");
         }
         log.info("Received {} for order {}", event.getEventType(), event.getOrderId());
         inventoryService.processOrderEvent(event);

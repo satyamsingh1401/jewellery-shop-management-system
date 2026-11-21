@@ -8,7 +8,6 @@ import com.myhourly.jewellery.inventory.kafka.OrderEventConsumer;
 import com.myhourly.jewellery.inventory.repository.ProcessedEventRepository;
 import com.myhourly.jewellery.inventory.repository.StockMovementRepository;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -245,7 +244,6 @@ class InventoryKafkaE2ETest extends E2eSupport {
     }
 
     @Test
-    @Tag("known-defect")
     @DisplayName("KAF-20 a literal JSON null message is rejected as IllegalArgumentException (non-retryable), not NullPointerException")
     void nullMessage() {
         assertThatThrownBy(() -> consumer.consume("null")).isInstanceOf(IllegalArgumentException.class);

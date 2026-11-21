@@ -4,6 +4,7 @@ import com.myhourly.jewellery.security.exception.CustomAccessDeniedHandler;
 import com.myhourly.jewellery.security.exception.CustomAuthenticationEntryPoint;
 import com.myhourly.jewellery.security.jwt.JwtAuthenticationFilter;
 import com.myhourly.jewellery.security.service.CustomUserDetailsService;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -83,6 +84,7 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider)
 
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .anyRequest().authenticated())

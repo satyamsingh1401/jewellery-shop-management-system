@@ -2,6 +2,7 @@ package com.myhourly.jewellery.inventory.e2e;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import tools.jackson.databind.JsonNode;
@@ -32,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
         "INITIAL_ADMIN_EMAIL=" + E2eSecurityConfig.ADMIN,
         "INITIAL_ADMIN_PASSWORD=" + E2eSecurityConfig.ADMIN_PASS
 })
+@ActiveProfiles("test")
 @Import(E2eSecurityConfig.class)
 abstract class E2eSupport {
 

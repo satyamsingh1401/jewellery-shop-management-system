@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -44,11 +45,12 @@ import static org.mockito.Mockito.verify;
  *  - Many threads start at the same moment and call the service directly.
  */
 @SpringBootTest(properties = {
-        "spring.datasource.url=${TEST_DB_URL:jdbc:mysql://localhost:3306/jewellery_test?createDatabaseIfNotExist=true}",
+        "spring.datasource.url=${TEST_DB_URL:jdbc:h2:mem:concurrency;MODE=MySQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1}",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.kafka.listener.auto-startup=false",
         "spring.kafka.admin.auto-create=false"
 })
+@ActiveProfiles("test")
 class InventoryConcurrencyTest {
 
     private static final long PRODUCT = 1L;
