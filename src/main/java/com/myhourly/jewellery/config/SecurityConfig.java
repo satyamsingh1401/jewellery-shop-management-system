@@ -1,4 +1,5 @@
 
+
 package com.myhourly.jewellery.config;
 
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private final CustomSecurityExceptionHandler securityExceptionHandler;
+
+    public SecurityConfig(
+            CustomSecurityExceptionHandler securityExceptionHandler) {
+        this.securityExceptionHandler = securityExceptionHandler;
+    }
 
     // Local testing ADMIN user
     @Bean
@@ -37,9 +45,16 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
+
             .authorizeHttpRequests(auth ->
                 auth.anyRequest().permitAll()
             )
+
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(securityExceptionHandler)
+                .accessDeniedHandler(securityExceptionHandler)
+            )
+
             .httpBasic(Customizer.withDefaults());
 
         return http.build();
@@ -53,9 +68,16 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
+
             .authorizeHttpRequests(auth ->
                 auth.anyRequest().authenticated()
             )
+
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(securityExceptionHandler)
+                .accessDeniedHandler(securityExceptionHandler)
+            )
+
             .httpBasic(Customizer.withDefaults());
 
         return http.build();
