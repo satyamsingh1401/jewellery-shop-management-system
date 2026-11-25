@@ -101,3 +101,34 @@ Developed by a 10-member team, coordinated by the project team lead.
 ## Project Status
 
 Under development.
+
+## Payment integration branch
+
+`feature/payment-management-billing` includes the latest Billing and JWT Security
+code and the Order module. The Order module also brings its Customer dependency.
+These integrations are local to the feature branch; merging to `main` requires
+the team lead's approval.
+
+- Payment creation, reading, confirmation, failure and cancellation allow ADMIN
+  and SALES_STAFF. Refunds allow ADMIN only.
+- Log in with `POST /api/auth/login`, then send the returned `accessToken` as
+  `Authorization: Bearer <token>`. Payment `createdBy` uses the authenticated email.
+- Confirmation/refunds update Invoice and Order payment statuses in the same
+  transaction. If the Order update fails, all changes roll back.
+- The public Order `payment-status` PATCH has been removed. Payment status is
+  updated through the Payment flow.
+
+Run `./mvnw clean verify` for unit, controller and integration tests. Full-context
+tests activate the `test` profile with an isolated in-memory H2 database and
+test-only authentication settings; MySQL and real login credentials are not
+needed. Integration tests cover actual JWT login, Payment/Billing/Order status
+changes and committed database state after rollback. MySQL/Postman smoke testing
+is a separate runtime check.
+
+For a normal local MySQL run, use environment variables `DB_URL`, `DB_USERNAME`,
+`DB_PASSWORD`, `JWT_SECRET` (a Base64-encoded key of at least 32 random bytes),
+`JWT_EXPIRATION` (milliseconds) and `CORS_ALLOWED_ORIGINS`. Existing private
+`application-local.properties` overrides are still imported. On a database with
+no administrator, also set `INITIAL_ADMIN_NAME`, `INITIAL_ADMIN_EMAIL` and
+`INITIAL_ADMIN_PASSWORD`. Keep their values private; never reuse the test
+configuration for normal runs. Start with `./mvnw spring-boot:run`.

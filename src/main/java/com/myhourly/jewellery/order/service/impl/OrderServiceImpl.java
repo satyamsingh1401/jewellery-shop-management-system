@@ -1,0 +1,177 @@
+package com.myhourly.jewellery.order.service.impl;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.myhourly.jewellery.common.exception.ResourceNotFoundException;
+
+import com.myhourly.jewellery.customer.repository.CustomerRepository;
+import com.myhourly.jewellery.order.dto.CreateOrderRequest;
+import com.myhourly.jewellery.order.dto.OrderItemRequest;
+import com.myhourly.jewellery.order.dto.OrderResponse;
+import com.myhourly.jewellery.order.entity.Order;
+import com.myhourly.jewellery.order.entity.OrderItem;
+import com.myhourly.jewellery.order.enums.OrderStatus;
+import com.myhourly.jewellery.order.repository.OrderRepository;
+import com.myhourly.jewellery.order.service.OrderService;
+
+@Service
+public class OrderServiceImpl implements OrderService {
+
+	private final OrderRepository orderRepository;
+    private final CustomerRepository customerRepository;
+
+    public OrderServiceImpl(OrderRepository orderRepository, CustomerRepository customerRepository) {
+        this.orderRepository = orderRepository;
+        this.customerRepository = customerRepository;
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse createOrder(CreateOrderRequest request) {
+        Order order = new Order();
+        order.setOrderNumber(generateOrderNumber());
+        if (!customerRepository.existsById(request.getCustomerId())) {
+            throw new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId());
+        }
+        order.setCustomerId(request.getCustomerId());
+        order.setCreatedBy(request.getCreatedBy());
+
+        BigDecimal discount = ((request.getDiscountAmount() != null) ? request.getDiscountAmount() : BigDecimal.ZERO)
+                .setScale(2, RoundingMode.HALF_UP);
+        order.setDiscountAmount(discount);
+
+        BigDecimal subtotal = BigDecimal.ZERO;
+        BigDecimal totalTax = BigDecimal.ZERO;
+
+        if (request.getItems() != null) {
+            for (OrderItemRequest itemReq : request.getItems()) {
+                OrderItem item = new OrderItem();
+                item.setProductId(itemReq.getProductId());
+                item.setQuantity(itemReq.getQuantity());
+                item.setNetWeight(itemReq.getNetWeight());
+                item.setRatePerGramSnapshot(itemReq.getRatePerGramSnapshot().setScale(2, RoundingMode.HALF_UP));
+                item.setMakingChargeSnapshot(itemReq.getMakingChargeSnapshot().setScale(2, RoundingMode.HALF_UP));
+
+                BigDecimal itemTax = (itemReq.getTaxSnapshot() != null)
+                        ? itemReq.getTaxSnapshot().setScale(2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+                item.setTaxSnapshot(itemTax);
+
+                BigDecimal goldCost = itemReq.getNetWeight().multiply(itemReq.getRatePerGramSnapshot());
+                BigDecimal itemBaseUnit = goldCost.add(itemReq.getMakingChargeSnapshot());
+                BigDecimal itemBaseTotal = itemBaseUnit.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+
+                BigDecimal lineTotal = itemBaseTotal.add(itemTax).setScale(2, RoundingMode.HALF_UP);
+                item.setLineTotal(lineTotal);
+
+                order.addItem(item);
+
+                subtotal = subtotal.add(itemBaseTotal);
+                totalTax = totalTax.add(itemTax);
+            }
+        }
+
+        order.setSubtotalAmount(subtotal.setScale(2, RoundingMode.HALF_UP));
+        order.setTaxAmount(totalTax.setScale(2, RoundingMode.HALF_UP));
+        order.setTotalAmount(subtotal.add(totalTax).subtract(discount).setScale(2, RoundingMode.HALF_UP));
+
+        Order savedOrder = orderRepository.save(order);
+        return mapToResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderById(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        return mapToResponse(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderByOrderNumber(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number: " + orderNumber));
+        return mapToResponse(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByCustomerId(Long customerId) {
+        List<Order> orders = orderRepository.findByCustomerId(customerId);
+        List<OrderResponse> responses = new ArrayList<>();
+        for (Order order : orders) {
+            responses.add(mapToResponse(order));
+        }
+        return responses;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        List<OrderResponse> responses = new ArrayList<>();
+        for (Order order : orders) {
+            responses.add(mapToResponse(order));
+        }
+        return responses;
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse updateOrderStatus(String orderNumber, OrderStatus status) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number: " + orderNumber));
+        order.setOrderStatus(status);
+        return mapToResponse(orderRepository.save(order));
+    }
+
+
+    private String generateOrderNumber() {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String suffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return "ORD-" + timestamp + "-" + suffix;
+    }
+
+    private OrderResponse mapToResponse(Order order) {
+        List<OrderItemRequest> itemDtos = new ArrayList<>();
+        if (order.getItems() != null) {
+            for (OrderItem item : order.getItems()) {
+                OrderItemRequest dto = new OrderItemRequest(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        item.getNetWeight(),
+                        item.getRatePerGramSnapshot(),
+                        item.getMakingChargeSnapshot(),
+                        item.getTaxSnapshot(),
+                        item.getLineTotal()
+                );
+                itemDtos.add(dto);
+            }
+        }
+
+        return new OrderResponse(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getCustomerId(),
+                order.getOrderStatus(),
+                order.getPaymentStatus(),
+                order.getSubtotalAmount(),
+                order.getDiscountAmount(),
+                order.getTaxAmount(),
+                order.getTotalAmount(),
+                order.getCreatedBy(),
+                order.getCreatedAt(),
+                itemDtos
+        );
+    }
+}

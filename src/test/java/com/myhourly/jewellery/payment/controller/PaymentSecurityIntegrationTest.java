@@ -145,6 +145,20 @@ class PaymentSecurityIntegrationTest {
     }
 
     @Test
+    void expiredBearerTokenIsRejected() throws Exception {
+        var key = io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                io.jsonwebtoken.io.Decoders.BASE64.decode(
+                        "dGVzdC1vbmx5LWptcy1zaWduaW5nLWtleS0zMi1ieXRlcy1taW5pbXVt"));
+        String token = io.jsonwebtoken.Jwts.builder()
+                .subject("admin@example.test")
+                .expiration(java.util.Date.from(java.time.Instant.now().minusSeconds(60)))
+                .signWith(key).compact();
+        mvc.perform(get("/api/payments").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
     void inactiveUserCannotUseExistingToken() throws Exception {
         mvc.perform(get("/api/payments")
                         .header("Authorization", bearer(Role.ADMIN, "admin@example.test", false)))
