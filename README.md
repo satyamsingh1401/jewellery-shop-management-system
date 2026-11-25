@@ -125,6 +125,19 @@ needed. Integration tests cover actual JWT login, Payment/Billing/Order status
 changes and committed database state after rollback. MySQL/Postman smoke testing
 is a separate runtime check.
 
+To repeat Payment integration and repository checks on local MySQL, run:
+
+```sh
+./mvnw clean verify -Djms.mysql.database=jms_payment_verify_2026112501
+```
+
+The opt-in tests only accept a database name beginning with
+`jms_payment_verify_` followed by digits. Use a fresh numeric suffix for a new
+scratch schema. The MySQL profile uses the existing private database credentials
+and creates/drops tables in that scratch schema, so the configured user needs
+schema creation permission. Never point these tests at the shop database.
+The empty scratch schema remains available after the test tables are dropped.
+
 For a normal local MySQL run, use environment variables `DB_URL`, `DB_USERNAME`,
 `DB_PASSWORD`, `JWT_SECRET` (a Base64-encoded key of at least 32 random bytes),
 `JWT_EXPIRATION` (milliseconds) and `CORS_ALLOWED_ORIGINS`. Existing private
