@@ -1,0 +1,17 @@
+$kind: http-request
+name: "Fail pending payment"
+order: 32000
+method: POST
+url: "{{base_url}}/api/payments/{{failed_payment_id}}/fail"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Status is FAILED", () => pm.expect(data.status).to.eql("FAILED"));

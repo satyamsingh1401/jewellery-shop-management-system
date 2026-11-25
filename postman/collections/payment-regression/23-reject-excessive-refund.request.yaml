@@ -1,0 +1,20 @@
+$kind: http-request
+name: "Reject excessive refund"
+order: 23000
+method: POST
+url: "{{base_url}}/api/payments/{{second_payment_id}}/refund"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "amount": 759,
+      "reason": "Invalid over-refund"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 400", () => pm.response.to.have.status(400));
+      const data = pm.response.json();

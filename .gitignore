@@ -35,3 +35,6 @@ build/
 
 # Local secrets (never commit)
 src/main/resources/application-local.properties
+
+# Private local API verification settings and credentials
+/.local/payment-postman/

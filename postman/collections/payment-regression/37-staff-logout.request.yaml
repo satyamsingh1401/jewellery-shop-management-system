@@ -1,0 +1,15 @@
+$kind: http-request
+name: "Staff logout"
+order: 37000
+method: POST
+url: "{{base_url}}/api/auth/logout"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 204", () => pm.response.to.have.status(204));

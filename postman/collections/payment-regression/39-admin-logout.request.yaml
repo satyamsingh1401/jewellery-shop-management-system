@@ -1,0 +1,10 @@
+$kind: http-request
+name: "Admin logout"
+order: 39000
+method: POST
+url: "{{base_url}}/api/auth/logout"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 204", () => pm.response.to.have.status(204));

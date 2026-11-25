@@ -1,0 +1,15 @@
+$kind: http-request
+name: "Logged out staff token denied"
+order: 38000
+method: GET
+url: "{{base_url}}/api/payments"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 401", () => pm.response.to.have.status(401));

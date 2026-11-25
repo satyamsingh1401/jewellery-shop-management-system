@@ -1,0 +1,10 @@
+$kind: http-request
+name: "Logged out admin token denied"
+order: 40000
+method: GET
+url: "{{base_url}}/api/payments"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 401", () => pm.response.to.have.status(401));

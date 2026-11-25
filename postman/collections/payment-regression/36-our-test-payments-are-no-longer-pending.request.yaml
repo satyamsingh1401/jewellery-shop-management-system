@@ -1,0 +1,18 @@
+$kind: http-request
+name: "Our test payments are no longer pending"
+order: 36000
+method: GET
+url: "{{base_url}}/api/payments/pending"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      const ids = ["first_payment_id","second_payment_id","failed_payment_id","cancelled_payment_id"].map(k => String(pm.variables.get(k)));
+      pm.test("No test payment remains pending", () => pm.expect(data.some(p => ids.includes(String(p.id)))).to.eql(false));

@@ -1,0 +1,22 @@
+$kind: http-request
+name: "Admin partial refund"
+order: 24000
+method: POST
+url: "{{base_url}}/api/payments/{{second_payment_id}}/refund"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "amount": 58.75,
+      "reason": "Verification partial return"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Status is PARTIALLY_REFUNDED", () => pm.expect(data.status).to.eql("PARTIALLY_REFUNDED"));
+      pm.test("refundedAmount is 58.75", () => pm.expect(Number(data.refundedAmount)).to.eql(58.75));

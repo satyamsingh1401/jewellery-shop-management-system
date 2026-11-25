@@ -1,0 +1,24 @@
+$kind: http-request
+name: "Create labelled sales staff"
+order: 3000
+method: POST
+url: "{{base_url}}/api/admin/sales_staff"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "JMS Verify Staff {{run_id}}",
+      "email": "{{staff_email}}",
+      "password": "{{staff_password}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      const data = pm.response.json();
+      pm.test("Response has id", () => pm.expect(data.id).to.exist);
+      if (pm.response.code === 201) pm.variables.set("staff_id", data.id);
+      pm.test("Staff role", () => pm.expect(data.role).to.eql("SALES_STAFF"));

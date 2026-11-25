@@ -1,0 +1,17 @@
+$kind: http-request
+name: "Invoice becomes paid"
+order: 19000
+method: GET
+url: "{{base_url}}/api/billing/invoices/{{invoice_id}}"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Status is PAID", () => pm.expect(data.status).to.eql("PAID"));

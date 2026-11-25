@@ -1,0 +1,11 @@
+$kind: collection
+name: Payment integration regression
+description: Real local API checks. Creates labelled test records without deleting existing data.
+variables:
+  - key: base_url
+    value: 'http://127.0.0.1:8080'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{admin_token}}'

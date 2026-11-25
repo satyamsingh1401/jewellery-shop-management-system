@@ -145,3 +145,46 @@ For a normal local MySQL run, use environment variables `DB_URL`, `DB_USERNAME`,
 no administrator, also set `INITIAL_ADMIN_NAME`, `INITIAL_ADMIN_EMAIL` and
 `INITIAL_ADMIN_PASSWORD`. Keep their values private; never reuse the test
 configuration for normal runs. Start with `./mvnw spring-boot:run`.
+
+## Local Postman regression
+
+The collection in `postman/collections/payment-regression` checks actual HTTP
+endpoints, including ADMIN/SALES_STAFF access, split payments, overpayment,
+refund limits, invoice and order status changes, failed/cancelled payments and
+revoked tokens after logout. A full run sends 40 requests with 86 assertions.
+It creates labelled verification records in `Jewellery_Shop`; it does not delete
+existing records. Test payments finish refunded, failed or cancelled.
+
+Prepare a fresh run identifier and private credentials:
+
+```sh
+python3 postman/prepare-local-run.py
+```
+
+Start the built application from the project root in a separate terminal:
+
+```sh
+java -jar target/jewellery-shop-management-system-0.0.1-SNAPSHOT.jar \
+  --spring.config.additional-location=file:./.local/payment-postman/runtime.properties
+```
+
+The private runtime file supplies a local JWT signing key and first-admin
+settings. It preserves normal private database credentials and uses schema
+update mode. The first-admin initializer only creates a verification admin when
+no administrator exists; it never resets an existing admin. If your database
+already has another admin, supply that admin's login privately in the ignored
+`iteration-data.json`; never paste or commit credentials. The preparation tool
+preserves the chosen admin login while refreshing each run's staff/customer data.
+
+With the application running, validate and execute the collection locally:
+
+```sh
+postman collection lint postman/collections/payment-regression --fail-severity warning
+postman collection run postman/collections/payment-regression \
+  -d .local/payment-postman/iteration-data.json \
+  --no-report-events --bail failure --timeout-request 15000
+```
+
+The `.local/payment-postman/` directory is gitignored. Tokens are kept only in
+run-local variables. Cloud reporting is disabled by the run command; shared
+collection files contain placeholders rather than login values.

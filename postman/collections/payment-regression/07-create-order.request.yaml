@@ -1,0 +1,35 @@
+$kind: http-request
+name: "Create order"
+order: 7000
+method: POST
+url: "{{base_url}}/api/v1/orders"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "customerId": {{customer_id}},
+      "discountAmount": 0,
+      "createdBy": "{{admin_email}}",
+      "items": [
+        {
+          "productId": {{product_id}},
+          "quantity": 1,
+          "netWeight": 1.125,
+          "ratePerGramSnapshot": 1000,
+          "makingChargeSnapshot": 0,
+          "taxSnapshot": 33.75
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      const data = pm.response.json();
+      pm.test("Response has id", () => pm.expect(data.id).to.exist);
+      if (pm.response.code === 201) pm.variables.set("order_id", data.id);
+      pm.test("Order payment status is UNPAID", () => pm.expect(data.paymentStatus).to.eql("UNPAID"));
+      pm.test("totalAmount is 1158.75", () => pm.expect(Number(data.totalAmount)).to.eql(1158.75));

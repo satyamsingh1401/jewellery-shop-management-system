@@ -1,0 +1,25 @@
+$kind: http-request
+name: "Sales staff refund denied"
+order: 21000
+method: POST
+url: "{{base_url}}/api/payments/{{second_payment_id}}/refund"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "amount": 58.75,
+      "reason": "Permission check"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 403", () => pm.response.to.have.status(403));
+      const data = pm.response.json();

@@ -1,0 +1,24 @@
+$kind: http-request
+name: "Sales staff login"
+order: 4000
+method: POST
+url: "{{base_url}}/api/auth/login"
+auth:
+  type: noauth
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{staff_email}}",
+      "password": "{{staff_password}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Response has accessToken", () => pm.expect(data.accessToken).to.exist);
+      if (pm.response.code === 200) pm.variables.set("staff_token", data.accessToken);

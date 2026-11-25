@@ -1,0 +1,36 @@
+$kind: http-request
+name: "Create invoice with three decimal weight"
+order: 8000
+method: POST
+url: "{{base_url}}/api/billing/invoices"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "customerId": {{customer_id}},
+      "orderId": {{order_id}},
+      "items": [
+        {
+          "productId": {{product_id}},
+          "netWeight": 1.125,
+          "ratePerGram": 1000,
+          "makingChargeType": "FIXED",
+          "makingChargeValue": 0
+        }
+      ],
+      "discountType": "NONE",
+      "discountValue": 0
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      const data = pm.response.json();
+      pm.test("Response has id", () => pm.expect(data.id).to.exist);
+      if (pm.response.code === 201) pm.variables.set("invoice_id", data.id);
+      pm.test("Status is GENERATED", () => pm.expect(data.status).to.eql("GENERATED"));
+      pm.test("grandTotal is 1158.75", () => pm.expect(Number(data.grandTotal)).to.eql(1158.75));
+      pm.test("Three-decimal weight is preserved", () => pm.expect(Number(data.items[0].netWeight)).to.eql(1.125));

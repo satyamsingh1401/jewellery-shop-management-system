@@ -1,0 +1,25 @@
+$kind: http-request
+name: "Admin login"
+order: 2000
+method: POST
+url: "{{base_url}}/api/auth/login"
+auth:
+  type: noauth
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{admin_email}}",
+      "password": "{{admin_password}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Response has accessToken", () => pm.expect(data.accessToken).to.exist);
+      if (pm.response.code === 200) pm.variables.set("admin_token", data.accessToken);
+      pm.test("Admin identity", () => pm.expect(data.role).to.eql("ADMIN"));

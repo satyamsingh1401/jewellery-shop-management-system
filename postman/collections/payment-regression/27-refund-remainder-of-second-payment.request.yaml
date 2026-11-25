@@ -1,0 +1,23 @@
+$kind: http-request
+name: "Refund remainder of second payment"
+order: 27000
+method: POST
+url: "{{base_url}}/api/payments/{{second_payment_id}}/refund"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "amount": 700,
+      "reason": "Verification remaining return"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Status is REFUNDED", () => pm.expect(data.status).to.eql("REFUNDED"));
+      pm.test("refundedAmount is 758.75", () => pm.expect(Number(data.refundedAmount)).to.eql(758.75));
+      pm.test("Refund reasons accumulate", () => pm.expect(data.refundReason).to.eql("Verification partial return; Verification remaining return"));

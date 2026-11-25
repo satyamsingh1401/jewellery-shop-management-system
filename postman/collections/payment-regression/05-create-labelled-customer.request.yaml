@@ -1,0 +1,24 @@
+$kind: http-request
+name: "Create labelled customer"
+order: 5000
+method: POST
+url: "{{base_url}}/api/customers"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "JMS Verify Customer {{run_id}}",
+      "phone": "{{customer_phone}}",
+      "email": "jms.customer.{{run_id}}@example.test",
+      "address": "Verification record - {{run_id}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      const data = pm.response.json();
+      pm.test("Response has id", () => pm.expect(data.id).to.exist);
+      if (pm.response.code === 201) pm.variables.set("customer_id", data.id);

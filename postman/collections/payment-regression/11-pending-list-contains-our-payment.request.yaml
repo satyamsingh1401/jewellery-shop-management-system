@@ -1,0 +1,17 @@
+$kind: http-request
+name: "Pending list contains our payment"
+order: 11000
+method: GET
+url: "{{base_url}}/api/payments/pending"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Our payment appears in pending list", () => pm.expect(data.some(p => String(p.id) === String(pm.variables.get("first_payment_id")))).to.eql(true));

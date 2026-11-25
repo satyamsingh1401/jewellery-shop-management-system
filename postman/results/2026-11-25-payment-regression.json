@@ -1,0 +1,39 @@
+{
+  "verified_at": "2026-11-25T09:12:44.642862+05:30",
+  "tool": "Postman CLI 1.77.0",
+  "target": "http://127.0.0.1:8080",
+  "database": "Jewellery_Shop",
+  "requests": 40,
+  "assertions": 86,
+  "failures": 0,
+  "exit_code": 0,
+  "cloud_reporting": false,
+  "existing_record_deletion": false,
+  "scenarios": [
+    "JWT admin and staff login",
+    "401 without authentication",
+    "ADMIN-only refunds and SALES_STAFF rejection",
+    "Three-decimal invoice weight",
+    "Payment recorder from authenticated email",
+    "Pending list",
+    "Overpayment and excessive refund rejection",
+    "Split payments with invoice/order status sync",
+    "Partial and full refunds",
+    "Fail and cancel pending payments",
+    "Logged-out tokens rejected"
+  ],
+  "verification_record_ids": {
+    "order": [
+      "1"
+    ],
+    "invoice": [
+      "6"
+    ],
+    "payments": [
+      "279",
+      "280",
+      "281",
+      "282"
+    ]
+  }
+}

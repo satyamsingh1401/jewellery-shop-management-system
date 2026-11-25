@@ -1,0 +1,28 @@
+$kind: http-request
+name: "Create labelled product"
+order: 6000
+method: POST
+url: "{{base_url}}/api/products"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "JMS Verify Product {{run_id}}",
+      "category": "API Verification",
+      "metalType": "GOLD",
+      "purity": "K22",
+      "grossWeight": 1.125,
+      "stoneWeight": 0,
+      "makingChargeType": "FIXED",
+      "makingChargeValue": 0
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      const data = pm.response.json();
+      pm.test("Response has id", () => pm.expect(data.id).to.exist);
+      if (pm.response.code === 201) pm.variables.set("product_id", data.id);

@@ -1,0 +1,19 @@
+$kind: http-request
+name: "Block invoice cancellation with pending payments"
+order: 14000
+method: PATCH
+url: "{{base_url}}/api/billing/invoices/{{invoice_id}}/status"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "CANCELLED"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 400", () => pm.response.to.have.status(400));
+      const data = pm.response.json();

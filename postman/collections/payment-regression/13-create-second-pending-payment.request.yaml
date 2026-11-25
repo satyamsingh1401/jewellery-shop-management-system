@@ -1,0 +1,30 @@
+$kind: http-request
+name: "Create second pending payment"
+order: 13000
+method: POST
+url: "{{base_url}}/api/payments"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "orderId": {{order_id}},
+      "amount": 758.75,
+      "paymentMethod": "CARD",
+      "externalReference": "VERIFY-{{run_id}}-SECOND"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      const data = pm.response.json();
+      pm.test("Response has id", () => pm.expect(data.id).to.exist);
+      if (pm.response.code === 201) pm.variables.set("second_payment_id", data.id);
+      pm.test("Status is PENDING", () => pm.expect(data.status).to.eql("PENDING"));

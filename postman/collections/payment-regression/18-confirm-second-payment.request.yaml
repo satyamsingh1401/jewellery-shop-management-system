@@ -1,0 +1,17 @@
+$kind: http-request
+name: "Confirm second payment"
+order: 18000
+method: POST
+url: "{{base_url}}/api/payments/{{second_payment_id}}/confirm"
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{staff_token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const data = pm.response.json();
+      pm.test("Status is COMPLETED", () => pm.expect(data.status).to.eql("COMPLETED"));
