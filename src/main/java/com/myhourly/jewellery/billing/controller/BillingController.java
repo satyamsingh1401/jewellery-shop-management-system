@@ -4,6 +4,7 @@ import com.myhourly.jewellery.billing.dto.BillCalculationRequest;
 import com.myhourly.jewellery.billing.dto.BillCalculationResponse;
 import com.myhourly.jewellery.billing.service.BillingCalculatorService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +21,7 @@ public class BillingController {
     }
 
     @PostMapping("/calculate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     public BillCalculationResponse calculate(@Valid @RequestBody BillCalculationRequest request) {
         return calculatorService.calculate(request);
     }

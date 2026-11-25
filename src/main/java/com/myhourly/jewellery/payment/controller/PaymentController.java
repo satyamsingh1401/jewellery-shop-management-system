@@ -7,6 +7,7 @@ import com.myhourly.jewellery.payment.service.PaymentService;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/payments")
+@PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -74,6 +76,7 @@ public class PaymentController {
     }
 
     @PostMapping("/{paymentId}/refund")
+    @PreAuthorize("hasRole('ADMIN')")
     public PaymentResponseDto recordRefund(
             @PathVariable Long paymentId,
             @Valid @RequestBody RefundRequestDto request) {

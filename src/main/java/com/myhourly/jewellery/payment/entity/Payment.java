@@ -54,7 +54,7 @@ public class Payment {
     @Column(nullable = false, length = 3)
     private String currency = "INR";
 
-    @Column(length = 100)
+    @Column(length = 150)
     private String createdBy;
 
     // Reference from the payer's bank/UPI app (UPI transaction id, cheque

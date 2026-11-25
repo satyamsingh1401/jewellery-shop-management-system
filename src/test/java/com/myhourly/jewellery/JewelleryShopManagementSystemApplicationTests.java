@@ -11,6 +11,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.springframework.test.context.ActiveProfiles("test")
 @SpringBootTest
 class JewelleryShopManagementSystemApplicationTests {
 

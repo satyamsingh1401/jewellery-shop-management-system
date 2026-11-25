@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,27 +36,32 @@ public class InvoiceController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceResponse create(@Valid @RequestBody InvoiceCreateRequest request) {
         return invoiceService.createInvoice(request);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     public InvoiceResponse getById(@PathVariable Long id) {
         return invoiceService.getById(id);
     }
 
     @GetMapping("/by-number/{invoiceNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     public InvoiceResponse getByNumber(@PathVariable String invoiceNumber) {
         return invoiceService.getByInvoiceNumber(invoiceNumber);
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     public List<InvoiceResponse> getByOrder(@RequestParam Long orderId) {
         return invoiceService.getByOrderId(orderId);
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public InvoiceResponse updateStatus(@PathVariable Long id,
                                         @Valid @RequestBody InvoiceStatusUpdateRequest request) {
         if (request.status() != InvoiceStatus.CANCELLED) {
@@ -66,6 +72,7 @@ public class InvoiceController {
     }
 
     @GetMapping("/{id}/print")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_STAFF')")
     public ResponseEntity<String> print(@PathVariable Long id) {
         String html = htmlRenderer.render(invoiceService.getById(id));
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);

@@ -26,7 +26,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@MockitoBean(types = {com.myhourly.jewellery.security.repository.UserRepository.class,
+        com.myhourly.jewellery.security.repository.RevokedTokenRepository.class})
 @WebMvcTest(PaymentController.class)
+@org.springframework.test.context.ActiveProfiles("test")
+@org.springframework.context.annotation.Import(com.myhourly.jewellery.payment.support.PaymentSecurityTestConfig.class)
 class PaymentControllerTest {
 
     @Autowired
@@ -40,7 +44,7 @@ class PaymentControllerTest {
         when(paymentService.getAllPayments()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/payments")
-                .with(user("user")))
+                .with(user("user").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
@@ -54,7 +58,7 @@ class PaymentControllerTest {
         when(paymentService.getPendingPayments()).thenReturn(List.of(pending));
 
         mockMvc.perform(get("/api/payments/pending")
-                .with(user("user")))
+                .with(user("user").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(5))
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
@@ -70,7 +74,7 @@ class PaymentControllerTest {
         when(paymentService.getPaymentById(1L)).thenReturn(response);
 
         mockMvc.perform(get("/api/payments/1")
-                .with(user("user")))
+                .with(user("user").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.amount").value(2500.00));
@@ -95,7 +99,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -113,7 +117,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -141,7 +145,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -162,7 +166,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -175,7 +179,7 @@ class PaymentControllerTest {
                 .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(get("/api/payments/999")
-                .with(user("user")))
+                .with(user("user").roles("ADMIN")))
                 .andExpect(status().isNotFound());
     }
 
@@ -191,7 +195,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -214,7 +218,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -238,7 +242,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -261,7 +265,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -275,7 +279,7 @@ class PaymentControllerTest {
                 .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(get("/api/payments/999")
-                .with(user("user")))
+                .with(user("user").roles("ADMIN")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
@@ -299,7 +303,7 @@ class PaymentControllerTest {
                 .thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/payments/invoice/7")
-                .with(user("user")))
+                .with(user("user").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].id").value(3))
@@ -326,7 +330,7 @@ class PaymentControllerTest {
         when(paymentService.confirmPayment(5L)).thenReturn(response);
 
         mockMvc.perform(post("/api/payments/5/confirm")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5))
@@ -346,7 +350,7 @@ class PaymentControllerTest {
                 .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(post("/api/payments/999/confirm")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isNotFound());
     }
@@ -357,7 +361,7 @@ class PaymentControllerTest {
                 .thenThrow(new BusinessValidationException("Only pending payments can be moved to COMPLETED"));
 
         mockMvc.perform(post("/api/payments/6/confirm")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isBadRequest());
     }
@@ -371,7 +375,7 @@ class PaymentControllerTest {
         when(paymentService.failPayment(5L)).thenReturn(response);
 
         mockMvc.perform(post("/api/payments/5/fail")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
@@ -383,7 +387,7 @@ class PaymentControllerTest {
                 .thenThrow(new BusinessValidationException("Only pending payments can be moved to FAILED"));
 
         mockMvc.perform(post("/api/payments/6/fail")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isBadRequest());
     }
@@ -397,7 +401,7 @@ class PaymentControllerTest {
         when(paymentService.cancelPayment(5L)).thenReturn(response);
 
         mockMvc.perform(post("/api/payments/5/cancel")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
@@ -409,7 +413,7 @@ class PaymentControllerTest {
                 .thenThrow(new ResourceNotFoundException("Payment not found: 999"));
 
         mockMvc.perform(post("/api/payments/999/cancel")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf()))
                 .andExpect(status().isNotFound());
     }
@@ -429,7 +433,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments/1/refund")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -446,7 +450,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments/1/refund")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -464,7 +468,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments/1/refund")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -482,7 +486,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments/1/refund")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -499,7 +503,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments/1/refund")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
@@ -527,7 +531,7 @@ class PaymentControllerTest {
                 """;
 
         mockMvc.perform(post("/api/payments/1/refund")
-                .with(user("user"))
+                .with(user("user").roles("ADMIN"))
                 .with(csrf())
                 .contentType(APPLICATION_JSON)
                 .content(requestJson))
