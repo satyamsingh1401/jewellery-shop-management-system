@@ -1,0 +1,133 @@
+package com.myhourly.jewellery.inventory.e2e;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "spring.datasource.url=jdbc:h2:mem:e2e-${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.kafka.listener.auto-startup=false",
+        "spring.kafka.admin.auto-create=false",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "security.jwt.secret=ZTJlLW9ubHktc2lnbmluZy1rZXktZm9yLWludmVudG9yeS10ZXN0cy0wMTIzNDU2Nzg5",
+        "security.jwt.expiration-ms=3600000",
+        "app.cors.allowed-origins=http://localhost:3000",
+        "INITIAL_ADMIN_NAME=E2E Admin",
+        "INITIAL_ADMIN_EMAIL=" + E2eSecurityConfig.ADMIN,
+        "INITIAL_ADMIN_PASSWORD=" + E2eSecurityConfig.ADMIN_PASS
+})
+@ActiveProfiles("test")
+@Import(E2eSecurityConfig.class)
+abstract class E2eSupport {
+
+    private static final AtomicLong PRODUCT_IDS = new AtomicLong(System.nanoTime() % 1_000_000 * 100 + 10_000);
+
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
+    private final Map<String, String> tokens = new ConcurrentHashMap<>();
+
+    @LocalServerPort
+    int port;
+
+    @Autowired
+    JsonMapper json;
+
+    record Res(int status, String raw, JsonNode body, HttpHeaders headers) {
+        String header(String name) {
+            return headers.firstValue(name).orElse(null);
+        }
+    }
+
+    static long newProductId() {
+        return PRODUCT_IDS.incrementAndGet();
+    }
+
+    Res call(String method, String path, String body, String user, String password) {
+        return callAsync(method, path, body, user, password, "application/json", null).join();
+    }
+
+    Res call(String method, String path, String body, String user, String password, String contentType) {
+        return callAsync(method, path, body, user, password, contentType, null).join();
+    }
+
+    Res callWithOrigin(String method, String path, String user, String password, String origin) {
+        return callAsync(method, path, null, user, password, "application/json", origin).join();
+    }
+
+    CompletableFuture<Res> callAsync(String method, String path, String body, String user, String password,
+                                     String contentType, String origin) {
+        String token = null;
+        if (user != null) {
+            Res login = login(user, password);
+            if (login.status() != 200) {
+                return CompletableFuture.completedFuture(login);
+            }
+            token = login.body().path("accessToken").asString();
+        }
+        return send(method, path, body, token, contentType, origin);
+    }
+
+    Res login(String user, String password) {
+        String key = user + ":" + password;
+        String cached = tokens.get(key);
+        if (cached != null) {
+            return new Res(200, cached, parse(cached), null);
+        }
+        String credentials = json.createObjectNode().put("email", user).put("password", password).toString();
+        Res res = send("POST", "/api/auth/login", credentials, null, "application/json", null).join();
+        if (res.status() == 200) {
+            tokens.put(key, res.raw());
+        }
+        return res;
+    }
+
+    CompletableFuture<Res> send(String method, String path, String body, String token,
+                                        String contentType, String origin) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                .timeout(Duration.ofSeconds(60))
+                .method(method, body == null
+                        ? HttpRequest.BodyPublishers.noBody()
+                        : HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+        if (body != null && contentType != null) {
+            builder.header("Content-Type", contentType);
+        }
+        builder.header("Accept", "application/json");
+        if (token != null) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+        if (origin != null) {
+            builder.header("Origin", origin);
+            builder.header("Access-Control-Request-Method", "POST");
+        }
+        return http.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+                .thenApply(r -> new Res(r.statusCode(), r.body(), parse(r.body()), r.headers()));
+    }
+
+    private JsonNode parse(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return json.createObjectNode();
+        }
+        try {
+            return json.readTree(raw);
+        } catch (RuntimeException e) {
+            return json.createObjectNode();
+        }
+    }
+}

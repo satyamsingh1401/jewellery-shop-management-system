@@ -8,7 +8,10 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 
@@ -16,10 +19,16 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -61,6 +70,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiError> handleEmailAlreadyExists(
             EmailAlreadyExistsException ex,
+            HttpServletRequest request) {
+
+        return build(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiError> handleInsufficientStock(
+            InsufficientStockException ex,
             HttpServletRequest request) {
 
         return build(
@@ -133,17 +155,47 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> handleMissingParameter(
+            MissingServletRequestParameterException ex,
+            HttpServletRequest request) {
+
+        String name = ex.getParameterName();
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed",
+                request,
+                Map.of(name, name + " is required")
+        );
+    }
+
     // 400 - Invalid Request Parameters
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiError> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex,
             HttpServletRequest request) {
 
+        String name = ex.getName();
+        Class<?> type = ex.getRequiredType();
+        String expected = type == null ? "valid value" : "valid " + type.getSimpleName();
         return build(
                 HttpStatus.BAD_REQUEST,
                 "One or more request parameters have an invalid type",
                 request,
-                Map.of()
+                Map.of(name, name + " must be a " + expected)
+        );
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ApiError> handleUnknownSortProperty(
+            PropertyReferenceException ex,
+            HttpServletRequest request) {
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed",
+                request,
+                Map.of("sort", "sort must reference a supported property")
         );
     }
 
@@ -156,6 +208,63 @@ public class GlobalExceptionHandler {
         return build(
                 HttpStatus.BAD_REQUEST,
                 "Request body contains invalid JSON or enum values",
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex,
+            HttpServletRequest request) {
+
+        return build(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "HTTP method " + ex.getMethod() + " is not supported for this endpoint",
+                request,
+                Map.of(),
+                ex.getHeaders()
+        );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex,
+            HttpServletRequest request) {
+
+        return build(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Content-Type is not supported; supported types: "
+                        + MediaType.toString(ex.getSupportedMediaTypes()),
+                request,
+                Map.of(),
+                ex.getHeaders()
+        );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ApiError> handleMediaTypeNotAcceptable(
+            HttpMediaTypeNotAcceptableException ex,
+            HttpServletRequest request) {
+
+        return build(
+                HttpStatus.NOT_ACCEPTABLE,
+                "Requested response type is not available; supported types: "
+                        + MediaType.toString(ex.getSupportedMediaTypes()),
+                request,
+                Map.of(),
+                ex.getHeaders()
+        );
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiError> handleNoEndpoint(
+            Exception ex,
+            HttpServletRequest request) {
+
+        return build(
+                HttpStatus.NOT_FOUND,
+                "No endpoint matches the requested path",
                 request,
                 Map.of()
         );
@@ -270,12 +379,22 @@ public class GlobalExceptionHandler {
         );
     }
 
-    // Common Response Builder
     private ResponseEntity<ApiError> build(
             HttpStatus status,
             String message,
             HttpServletRequest request,
             Map<String, String> fieldErrors) {
+
+        return build(status, message, request, fieldErrors, HttpHeaders.EMPTY);
+    }
+
+    // Common Response Builder
+    private ResponseEntity<ApiError> build(
+            HttpStatus status,
+            String message,
+            HttpServletRequest request,
+            Map<String, String> fieldErrors,
+            HttpHeaders headers) {
 
         ApiError response = new ApiError(
                 Instant.now(),
@@ -288,6 +407,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(status)
+                .headers(headers)
                 .body(response);
     }
 }
